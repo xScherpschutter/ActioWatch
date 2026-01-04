@@ -7,6 +7,7 @@ pub struct ProcessInfo {
     pub cpu_usage: f32,
     pub memory_usage: u64,
     pub thread_count: u64,
+    pub children: Vec<ProcessInfo>,
 }
 
 #[derive(Serialize, Clone)]

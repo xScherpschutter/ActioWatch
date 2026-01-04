@@ -124,21 +124,90 @@ pub fn run() {
                         network_down += data.received();
                     }
 
-                    // Get top 5 processes by CPU
-                    let mut processes: Vec<ProcessInfo> = sys
+                    // Create a map of PID -> Children PIDs
+                    let mut children_map: std::collections::HashMap<u32, Vec<u32>> =
+                        std::collections::HashMap::new();
+                    let mut all_pids: HashSet<u32> = HashSet::new();
+
+                    for (pid, process) in sys.processes() {
+                        let pid_u32 = pid.as_u32();
+                        all_pids.insert(pid_u32);
+                        if let Some(parent) = process.parent() {
+                            children_map
+                                .entry(parent.as_u32())
+                                .or_default()
+                                .push(pid_u32);
+                        }
+                    }
+
+                    // Recursive function to build the tree
+                    // We need to pass 'sys' to access process details
+                    fn build_process_node(
+                        pid: u32,
+                        sys: &sysinfo::System,
+                        children_map: &std::collections::HashMap<u32, Vec<u32>>,
+                    ) -> Option<ProcessInfo> {
+                        if let Some(process) = sys.process(Pid::from(pid as usize)) {
+                            let mut node = ProcessInfo {
+                                pid,
+                                name: process.name().to_string(),
+                                cpu_usage: process.cpu_usage(),
+                                memory_usage: process.memory(),
+                                thread_count: process.tasks().map(|t| t.len() as u64).unwrap_or(0),
+                                children: Vec::new(),
+                            };
+
+                            if let Some(children_pids) = children_map.get(&pid) {
+                                for &child_pid in children_pids {
+                                    if let Some(child_node) =
+                                        build_process_node(child_pid, sys, children_map)
+                                    {
+                                        node.children.push(child_node);
+                                    }
+                                }
+                            }
+                            // Sort children by CPU usage
+                            node.children.sort_by(|a, b| {
+                                b.cpu_usage
+                                    .partial_cmp(&a.cpu_usage)
+                                    .unwrap_or(std::cmp::Ordering::Equal)
+                            });
+
+                            Some(node)
+                        } else {
+                            None
+                        }
+                    }
+
+                    // Identify roots: Processes whose parents are NOT in the current list
+                    let roots: Vec<u32> = sys
                         .processes()
                         .iter()
-                        .map(|(pid, process)| ProcessInfo {
-                            pid: pid.as_u32(),
-                            name: process.name().to_string(),
-                            cpu_usage: process.cpu_usage(),
-                            memory_usage: process.memory(),
-                            // sysinfo 0.30: tasks() returns Option<&HashSet<Pid>>
-                            thread_count: process.tasks().map(|t| t.len() as u64).unwrap_or(0),
+                        .filter_map(|(pid, process)| {
+                            let pid_u32 = pid.as_u32();
+                            let parent_pid = process.parent().map(|p| p.as_u32());
+
+                            match parent_pid {
+                                None => Some(pid_u32),
+                                Some(ppid) => {
+                                    if !all_pids.contains(&ppid) {
+                                        Some(pid_u32)
+                                    } else {
+                                        None
+                                    }
+                                }
+                            }
                         })
                         .collect();
 
-                    // Sort processes by CPU usage (descending)
+                    let mut processes: Vec<ProcessInfo> = Vec::new();
+                    for root_pid in roots {
+                        if let Some(node) = build_process_node(root_pid, &sys, &children_map) {
+                            processes.push(node);
+                        }
+                    }
+
+                    // Sort root processes by CPU usage (descending)
                     processes.sort_by(|a, b| {
                         b.cpu_usage
                             .partial_cmp(&a.cpu_usage)

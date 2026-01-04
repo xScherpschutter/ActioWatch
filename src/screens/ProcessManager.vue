@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { Search, X, Box } from 'lucide-vue-next';
+import { ref, computed, onMounted } from 'vue';
+import { Search, X, Box, ListTree, List } from 'lucide-vue-next';
+import { isWindows } from "../utils/platform";
 
 interface ProcessInfo {
   pid: number;
@@ -8,6 +9,12 @@ interface ProcessInfo {
   cpu_usage: number;
   memory_usage: number;
   thread_count: number;
+  children: ProcessInfo[];
+}
+
+interface TreeNode extends ProcessInfo {
+  level: number;
+  isOpen: boolean; 
 }
 
 const props = defineProps<{
@@ -20,18 +27,84 @@ const props = defineProps<{
 const emit = defineEmits(['kill-process']);
 
 const searchQuery = ref('');
+const viewMode = ref<'list' | 'tree'>('list');
+const isWindowsPlatform = ref(false);
 
-const totalThreads = computed(() => {
-  return props.processes.reduce((acc, process) => acc + process.thread_count, 0);
+onMounted(async () => {
+  isWindowsPlatform.value = await isWindows();
 });
 
-const filteredProcesses = computed(() => {
-  if (!searchQuery.value) return props.processes;
-  const query = searchQuery.value.toLowerCase();
-  return props.processes.filter(p => 
-    p.name.toLowerCase().includes(query) || 
-    p.pid.toString().includes(query)
-  );
+const totalThreads = computed(() => {
+  if (isWindowsPlatform.value) return 0;
+  
+  // Need to traverse tree to count total threads if props.processes is just roots
+  let count = 0;
+  const traverse = (nodes: ProcessInfo[]) => {
+    for (const node of nodes) {
+      count += node.thread_count;
+      traverse(node.children);
+    }
+  };
+  traverse(props.processes);
+  return count;
+});
+
+// Helper to calculate total count for footer
+const totalProcesses = computed(() => {
+  let count = 0;
+  const traverse = (nodes: ProcessInfo[]) => {
+    for (const node of nodes) {
+      count++;
+      traverse(node.children);
+    }
+  };
+  traverse(props.processes);
+  return count;
+});
+
+
+const processedData = computed(() => {
+  // Use recursion to flatten for List View or when Searching
+  const flatten = (nodes: ProcessInfo[]): TreeNode[] => {
+    let result: TreeNode[] = [];
+    nodes.forEach(node => {
+      // Add self
+      result.push({ ...node, level: 0, isOpen: true });
+      // Add children (recurse)
+      result = result.concat(flatten(node.children));
+    });
+    return result;
+  };
+
+  const traverseTree = (nodes: ProcessInfo[], level: number): TreeNode[] => {
+      let result: TreeNode[] = [];
+      nodes.forEach(node => {
+          result.push({ ...node, level: level, isOpen: true });
+          result = result.concat(traverseTree(node.children, level + 1));
+      });
+      return result;
+  }
+
+  // Filter first if searching
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase();
+    // Use flat list for search
+    const allProcesses = flatten(props.processes);
+    return allProcesses.filter(p => 
+      p.name.toLowerCase().includes(query) || 
+      p.pid.toString().includes(query)
+    );
+  }
+
+  if (viewMode.value === 'tree') {
+    // Backend already sends a tree (roots with children).
+    // We need to linearize it for the v-for rendering, maintaining order and adding 'level'
+     return traverseTree(props.processes, 0);
+  } else {
+    // List mode: Flatten and Sort by CPU
+    const flat = flatten(props.processes);
+    return flat.sort((a, b) => b.cpu_usage - a.cpu_usage);
+  }
 });
 
 const getUsageColor = (usage: number) => {
@@ -50,7 +123,7 @@ const formatBytes = (bytes: number) => {
   <div class="h-full flex flex-col glass-container text-white select-none">
 
     <!-- Toolbar -->
-    <div class="p-4 flex gap-3">
+    <div class="p-4 flex gap-3 items-center">
       <div class="relative flex-grow group">
         <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 group-focus-within:text-neon-cpu transition-colors" />
         <input 
@@ -60,13 +133,32 @@ const formatBytes = (bytes: number) => {
           class="w-full glass-input border border-white/10 rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-neon-cpu/50 focus:ring-1 focus:ring-neon-cpu/50 transition-all placeholder-gray-600"
         />
       </div>
+
+      <!-- View Toggle -->
+      <div class="flex bg-white/5 rounded-lg p-1 border border-white/10">
+        <button 
+          @click="viewMode = 'list'"
+          :class="['p-2 rounded-md transition-all', viewMode === 'list' ? 'bg-white/10 text-neon-cpu shadow-sm' : 'text-gray-400 hover:text-white']"
+          title="List View"
+        >
+          <List class="w-4 h-4" />
+        </button>
+        <button 
+          @click="viewMode = 'tree'"
+          :class="['p-2 rounded-md transition-all', viewMode === 'tree' ? 'bg-white/10 text-neon-cpu shadow-sm' : 'text-gray-400 hover:text-white']"
+          title="Tree View"
+        >
+          <ListTree class="w-4 h-4" />
+        </button>
+      </div>
     </div>
 
     <!-- Table Header -->
     <div class="grid grid-cols-12 gap-4 px-6 py-2 text-xs font-bold text-white/80 uppercase tracking-wider border-b border-white/10">
-      <div class="col-span-4">Process Name</div>
+      <!-- Adjust column spans based on platform -->
+      <div :class="isWindowsPlatform ? 'col-span-5' : 'col-span-4'">Process Name</div>
       <div class="col-span-1">PID</div>
-      <div class="col-span-1">Threads</div>
+      <div v-if="!isWindowsPlatform" class="col-span-1">Threads</div>
       <div class="col-span-2">CPU %</div>
       <div class="col-span-2">Memory</div>
       <div class="col-span-2 text-right">Action</div>
@@ -74,15 +166,22 @@ const formatBytes = (bytes: number) => {
 
     <!-- Process List -->
     <div class="flex-grow overflow-y-auto custom-scrollbar px-2">
-      <div v-for="process in filteredProcesses" :key="process.pid" 
-           class="grid grid-cols-12 gap-4 px-4 py-3 items-center hover:bg-white/5 rounded-lg transition-colors group border-b border-white/5 last:border-0">
+      <div v-for="process in processedData" :key="process.pid" 
+           class="grid grid-cols-12 gap-4 px-4 py-2 items-center hover:bg-white/5 rounded-lg transition-colors group border-b border-white/5 last:border-0">
         
-        <!-- Name -->
-        <div class="col-span-4 flex items-center gap-3">
-          <div class="w-8 h-8 rounded bg-white/10 flex items-center justify-center text-cyan-400">
+        <!-- Name (with Indentation for Tree) -->
+        <div :class="isWindowsPlatform ? 'col-span-5' : 'col-span-4'" class="flex items-center gap-3 overflow-hidden">
+           <div :style="{ marginLeft: `${process.level * 20}px` }" class="flex-shrink-0 transition-all duration-300">
+              <div v-if="process.level > 0" class="w-3 h-4 border-l border-b border-white/20 inline-block -translate-y-1 mr-2"></div>
+           </div>
+
+          <div class="w-8 h-8 rounded shrink-0 bg-white/10 flex items-center justify-center text-cyan-400" :class="{'ml-2': process.level > 0}">
             <Box class="w-4 h-4" />
           </div>
-          <span class="font-medium text-sm text-white/90 group-hover:text-white truncate">{{ process.name }}</span>
+          <div class="flex flex-col truncate min-w-0">
+             <span class="font-medium text-sm text-white/90 group-hover:text-white truncate" :title="process.name">{{ process.name }}</span>
+             <span v-if="viewMode === 'tree' && process.children?.length" class="text-[10px] text-white/40">{{ process.children.length }} sub-procs</span>
+          </div>
         </div>
 
         <!-- PID -->
@@ -90,8 +189,8 @@ const formatBytes = (bytes: number) => {
           {{ process.pid }}
         </div>
 
-        <!-- Threads -->
-        <div class="col-span-1 font-mono text-xs text-white/60">
+        <!-- Threads (Only if not Windows) -->
+        <div v-if="!isWindowsPlatform" class="col-span-1 font-mono text-xs text-white/60">
           {{ process.thread_count }}
         </div>
 
@@ -134,6 +233,13 @@ const formatBytes = (bytes: number) => {
           </button>
         </div>
       </div>
+      
+      <!-- Empty State -->
+      <div v-if="processedData.length === 0" class="flex flex-col items-center justify-center py-20 text-white/40">
+        <Search class="w-12 h-12 mb-4 opacity-20" />
+        <p>No processes found matching "{{ searchQuery }}"</p>
+      </div>
+
     </div>
 
     <!-- Footer Stats -->
@@ -141,9 +247,9 @@ const formatBytes = (bytes: number) => {
       <div class="flex gap-8">
         <div class="flex flex-col">
           <span class="text-[10px] text-white/60 uppercase font-bold">Total Processes</span>
-          <span class="text-lg font-mono text-white">{{ processes.length }}</span>
+          <span class="text-lg font-mono text-white">{{ totalProcesses }}</span>
         </div>
-        <div class="flex flex-col">
+        <div v-if="!isWindowsPlatform" class="flex flex-col">
           <span class="text-[10px] text-white/60 font-bold uppercase tracking-wider">Threads</span>
           <span class="text-lg font-mono font-bold text-white">{{ totalThreads }}</span>
         </div>
