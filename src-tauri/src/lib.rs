@@ -27,6 +27,7 @@ fn kill_process(pid: u32) -> Result<bool, String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_notification::init())
         .invoke_handler(tauri::generate_handler![kill_process])
         .setup(|app| {
@@ -38,7 +39,8 @@ pub fn run() {
                 MenuItem::with_id(app, "standard", "Standard Mode", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show_i, &hide_i, &standard_i, &widget_i, &quit_i])?;
 
-            let _tray = TrayIconBuilder::with_id("tray")
+            // Build tray icon with explicit icon for Windows
+            let tray_builder = TrayIconBuilder::with_id("tray")
                 .menu(&menu)
                 .show_menu_on_left_click(true)
                 .on_menu_event(|app, event| match event.id.as_ref() {
@@ -77,8 +79,17 @@ pub fn run() {
                         }
                     }
                     _ => {}
-                })
-                .build(app)?;
+                });
+
+            // Set icon explicitly for Windows
+            #[cfg(target_os = "windows")]
+            let tray_builder = tray_builder.icon(
+                app.default_window_icon()
+                    .expect("Failed to load window icon")
+                    .clone(),
+            );
+
+            let _tray = tray_builder.build(app)?;
 
             let app_handle = app.handle().clone();
 

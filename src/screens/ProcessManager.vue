@@ -48,12 +48,6 @@ const formatBytes = (bytes: number) => {
 
 <template>
   <div class="h-full flex flex-col bg-gray-900/90 text-white select-none">
-    <!-- Header -->
-    <div data-tauri-drag-region class="h-14 flex items-center justify-between px-4 border-b border-white/5 bg-gray-800/30 backdrop-blur-md">
-      <div class="flex items-center gap-3">
-        <span class="text-lg font-bold tracking-widest text-white ml-2">ActioWatch</span>
-      </div>
-    </div>
 
     <!-- Toolbar -->
     <div class="p-4 flex gap-3">

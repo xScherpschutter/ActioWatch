@@ -14,7 +14,9 @@
       {
         "title": "ActioWatch",
         "width": 800,
-        "height": 600
+        "height": 600,
+        "decorations": false,
+        "transparent": false
       }
     ],
     "security": {
