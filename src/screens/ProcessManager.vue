@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { Search, X, Box, ListTree, List } from 'lucide-vue-next';
+import { Search, X, Box, ListTree, List, Info } from 'lucide-vue-next';
 import { isWindows } from "../utils/platform";
+import ProcessDetailsModal from '../components/ProcessDetailsModal.vue';
 
 interface ProcessInfo {
   pid: number;
@@ -29,6 +30,15 @@ const emit = defineEmits(['kill-process']);
 const searchQuery = ref('');
 const viewMode = ref<'list' | 'tree'>('list');
 const isWindowsPlatform = ref(false);
+
+// Modal State
+const showDetailsModal = ref(false);
+const selectedProcessPid = ref<number | null>(null);
+
+const openDetails = (pid: number) => {
+    selectedProcessPid.value = pid;
+    showDetailsModal.value = true;
+};
 
 onMounted(async () => {
   isWindowsPlatform.value = await isWindows();
@@ -226,9 +236,15 @@ const formatBytes = (bytes: number) => {
         </div>
 
         <!-- Action -->
-        <div class="col-span-2 flex justify-end">
+        <div class="col-span-2 flex justify-end gap-2">
+           <button @click="openDetails(process.pid)" 
+                  class="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-white/10 hover:border-white/20 border border-transparent transition-all"
+                  title="View Details">
+            <Info class="w-4 h-4" />
+          </button>
           <button @click="emit('kill-process', process.pid)" 
-                  class="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-red-500/20 hover:border-red-500/50 border border-transparent transition-all">
+                  class="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-red-500/20 hover:border-red-500/50 border border-transparent transition-all"
+                  title="Kill Process">
             <X class="w-4 h-4" />
           </button>
         </div>
@@ -281,6 +297,14 @@ const formatBytes = (bytes: number) => {
         </div>
       </div>
     </div>
+    
+    <!-- Details Modal -->
+    <ProcessDetailsModal 
+        :is-open="showDetailsModal" 
+        :pid="selectedProcessPid" 
+        @close="showDetailsModal = false" 
+    />
+
   </div>
 </template>
 

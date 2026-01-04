@@ -23,6 +23,38 @@ fn kill_process(pid: u32) -> Result<bool, String> {
     Err(format!("PID process {} not found", pid))
 }
 
+#[tauri::command]
+fn get_process_details(pid: u32) -> Result<models::ProcessDetails, String> {
+    let mut sys = System::new();
+    sys.refresh_processes();
+
+    if let Some(process) = sys.process(Pid::from(pid as usize)) {
+        Ok(models::ProcessDetails {
+            pid: process.pid().as_u32(),
+            name: process.name().to_string(),
+            cmd: process.cmd().to_vec(),
+            exe: process
+                .exe()
+                .map(|p| p.to_string_lossy().to_string())
+                .unwrap_or_default(),
+            cwd: process
+                .cwd()
+                .map(|p| p.to_string_lossy().to_string())
+                .unwrap_or_default(),
+            root: process
+                .root()
+                .map(|p| p.to_string_lossy().to_string())
+                .unwrap_or_default(),
+            status: format!("{:?}", process.status()),
+            run_time: process.run_time(),
+            memory_usage: process.memory(),
+            cpu_usage: process.cpu_usage(),
+        })
+    } else {
+        Err(format!("Process {} not found", pid))
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -33,7 +65,7 @@ pub fn run() {
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec!["--minimized"]),
         ))
-        .invoke_handler(tauri::generate_handler![kill_process])
+        .invoke_handler(tauri::generate_handler![kill_process, get_process_details])
         .setup(|app| {
             let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let show_i = MenuItem::with_id(app, "show", "Show", true, None::<&str>)?;

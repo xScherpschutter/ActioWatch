@@ -19,3 +19,17 @@ pub struct SystemStats {
     pub network_down: u64,
     pub top_processes: Vec<ProcessInfo>,
 }
+
+#[derive(Serialize, Clone)]
+pub struct ProcessDetails {
+    pub pid: u32,
+    pub name: String,
+    pub cmd: Vec<String>,
+    pub exe: String,
+    pub cwd: String,
+    pub root: String,
+    pub status: String,
+    pub run_time: u64,
+    pub memory_usage: u64,
+    pub cpu_usage: f32,
+}

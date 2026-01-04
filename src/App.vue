@@ -79,10 +79,6 @@ const killProcess = async (pid: number) => {
     showNotification.value = true;
   }
 };
-
-const toggleView = () => {
-  currentView.value = currentView.value === 'widget' ? 'process' : 'widget';
-};
 </script>
 
 <template>
