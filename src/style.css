@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-900 text-white overflow-hidden;
+    font-family: 'Inter', sans-serif;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-gray-900/60 backdrop-blur-md border border-white/10 shadow-xl;
+  }
+  
+  .glass-panel {
+    @apply bg-gray-800/40 backdrop-blur-sm border border-white/5;
+  }
+
+  .neon-text-cpu {
+    text-shadow: 0 0 10px #00D1FF;
+  }
+  
+  .neon-text-ram {
+    text-shadow: 0 0 10px #42FF00;
+  }
+  
+  .neon-text-gpu {
+    text-shadow: 0 0 10px #FF9900;
+  }
+
+  .neon-border-cpu {
+    box-shadow: 0 0 5px #00D1FF, inset 0 0 5px #00D1FF;
+  }
+
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-white/20 rounded-full hover:bg-white/30 transition-colors;
+  }
+}
