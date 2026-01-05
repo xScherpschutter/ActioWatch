@@ -1,4 +1,4 @@
-use crate::models::{ProcessDetails};
+use crate::models::ProcessDetails;
 use sysinfo::{Pid, System};
 
 #[tauri::command]
@@ -39,6 +39,7 @@ pub fn get_process_details(pid: u32) -> Result<ProcessDetails, String> {
             run_time: process.run_time(),
             memory_usage: process.memory(),
             cpu_usage: process.cpu_usage(),
+            environ: process.environ().to_vec(),
         })
     } else {
         Err(format!("Process {} not found", pid))

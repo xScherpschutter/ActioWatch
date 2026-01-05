@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { X, Cpu, HardDrive, Terminal, FolderOpen, Clock, Activity, AlertCircle } from 'lucide-vue-next';
+import { ref, watch, computed } from 'vue';
+import { X, Cpu, HardDrive, Terminal, FolderOpen, Clock, Activity, AlertCircle, Layers, Box } from 'lucide-vue-next';
 import { invoke } from '@tauri-apps/api/core';
 
 const props = defineProps<{
@@ -21,11 +21,13 @@ interface ProcessDetails {
   run_time: number;
   memory_usage: number;
   cpu_usage: number;
+  environ: string[];
 }
 
 const details = ref<ProcessDetails | null>(null);
 const loading = ref(false);
 const error = ref<string | null>(null);
+const activeTab = ref<'general' | 'env' | 'modules'>('general');
 
 const fetchDetails = async () => {
   if (!props.pid) return;
@@ -40,15 +42,13 @@ const fetchDetails = async () => {
   }
 };
 
-onMounted(() => {
-  if (props.isOpen && props.pid) {
-    fetchDetails();
-  }
+watch(() => props.isOpen, (isOpen) => {
+    if (isOpen && props.pid) {
+        fetchDetails();
+        activeTab.value = 'general';
+    }
 });
 
-// Re-fetch when prop changes if open, but mostly relied on v-if mount
-// Or watcher if kept alive. Assuming v-if in parent for now or watcher.
-import { watch } from 'vue';
 watch(() => props.pid, (newPid) => {
     if (newPid && props.isOpen) fetchDetails();
 });
@@ -64,6 +64,11 @@ const formatBytes = (bytes: number) => {
   const gb = bytes / (1024 * 1024 * 1024);
   return `${gb.toFixed(2)} GB`;
 };
+
+const envVars = computed(() => {
+    if (!details.value?.environ) return [];
+    return details.value.environ;
+});
 </script>
 
 <template>
@@ -81,7 +86,7 @@ const formatBytes = (bytes: number) => {
       <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="emit('close')"></div>
 
       <!-- Modal Content -->
-      <div class="relative w-full max-w-2xl bg-slate-900/90 border border-white/10 rounded-2xl shadow-2xl backdrop-blur-xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div class="relative w-full max-w-2xl bg-slate-900/95 border border-white/10 rounded-2xl shadow-2xl backdrop-blur-xl overflow-hidden flex flex-col max-h-[90vh]">
         
         <!-- Header -->
         <div class="flex items-center justify-between p-6 border-b border-white/5 bg-white/5">
@@ -100,77 +105,137 @@ const formatBytes = (bytes: number) => {
         </div>
 
         <!-- Body -->
-        <div class="p-6 overflow-y-auto custom-scrollbar space-y-6">
+        <div class="flex flex-col flex-grow overflow-hidden">
             
             <!-- Loading State -->
-            <div v-if="loading" class="flex flex-col items-center justify-center py-12">
+            <div v-if="loading" class="flex flex-col items-center justify-center py-20">
                 <div class="w-8 h-8 border-2 border-neon-cpu border-t-transparent rounded-full animate-spin"></div>
                 <p class="mt-4 text-sm text-gray-400">Fetching detailed stats...</p>
             </div>
 
             <!-- Error State -->
-            <div v-else-if="error" class="flex items-center gap-3 p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400">
-                <AlertCircle class="w-5 h-5 flex-shrink-0" />
-                <p class="text-sm">{{ error }}</p>
+            <div v-else-if="error" class="p-6">
+                 <div class="flex items-center gap-3 p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400">
+                    <AlertCircle class="w-5 h-5 flex-shrink-0" />
+                    <p class="text-sm">{{ error }}</p>
+                </div>
             </div>
 
             <!-- Content -->
-            <div v-else-if="details" class="space-y-6 animate-fade-in">
+            <div v-else-if="details" class="flex flex-col h-full">
                 
-                <!-- Main Stats Grid -->
-                <div class="grid grid-cols-3 gap-4">
-                    <div class="p-4 rounded-lg bg-white/5 border border-white/5 flex flex-col gap-1">
-                        <span class="text-xs text-gray-400 flex items-center gap-1"><Cpu class="w-3 h-3" /> CPU Usage</span>
-                        <span class="text-xl font-mono text-neon-cpu">{{ details.cpu_usage.toFixed(1) }}%</span>
-                    </div>
-                    <div class="p-4 rounded-lg bg-white/5 border border-white/5 flex flex-col gap-1">
-                        <span class="text-xs text-gray-400 flex items-center gap-1"><HardDrive class="w-3 h-3" /> Memory</span>
-                        <span class="text-xl font-mono text-neon-ram">{{ formatBytes(details.memory_usage) }}</span>
-                    </div>
-                    <div class="p-4 rounded-lg bg-white/5 border border-white/5 flex flex-col gap-1">
-                        <span class="text-xs text-gray-400 flex items-center gap-1"><Clock class="w-3 h-3" /> Run Time</span>
-                        <span class="text-xl font-mono text-white">{{ formatTime(details.run_time) }}</span>
-                    </div>
+                <!-- Tabs -->
+                <div class="flex border-b border-white/5 px-6">
+                    <button 
+                        @click="activeTab = 'general'"
+                        class="px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2"
+                        :class="activeTab === 'general' ? 'border-neon-cpu text-white' : 'border-transparent text-gray-400 hover:text-white'"
+                    >
+                        <Activity class="w-4 h-4" /> General
+                    </button>
+                    <button 
+                        @click="activeTab = 'env'"
+                        class="px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2"
+                        :class="activeTab === 'env' ? 'border-neon-cpu text-white' : 'border-transparent text-gray-400 hover:text-white'"
+                    >
+                         <Layers class="w-4 h-4" /> Environment
+                         <span class="text-[10px] bg-white/10 px-1.5 rounded">{{ envVars.length }}</span>
+                    </button>
+                     <button 
+                        @click="activeTab = 'modules'"
+                        class="px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2"
+                        :class="activeTab === 'modules' ? 'border-neon-cpu text-white' : 'border-transparent text-gray-400 hover:text-white'"
+                    >
+                        <Box class="w-4 h-4" /> Modules
+                    </button>
                 </div>
 
-                <!-- Executable Path -->
-                <div class="space-y-2">
-                    <label class="text-xs uppercase font-bold text-gray-500 tracking-wider flex items-center gap-2">
-                        <HardDrive class="w-3 h-3" /> Executable Path
-                    </label>
-                    <div class="p-3 rounded-lg bg-black/40 border border-white/10 font-mono text-xs text-blue-200 break-all select-all">
-                        {{ details.exe || 'N/A' }}
+                <!-- Tab Panels -->
+                <div class="p-6 overflow-y-auto custom-scrollbar flex-grow">
+                    
+                    <!-- General Tab -->
+                    <div v-if="activeTab === 'general'" class="space-y-6 animate-fade-in">
+                        <!-- Main Stats Grid -->
+                        <div class="grid grid-cols-3 gap-4">
+                            <div class="p-4 rounded-lg bg-white/5 border border-white/5 flex flex-col gap-1">
+                                <span class="text-xs text-gray-400 flex items-center gap-1"><Cpu class="w-3 h-3" /> CPU Usage</span>
+                                <span class="text-xl font-mono text-neon-cpu">{{ details.cpu_usage.toFixed(1) }}%</span>
+                            </div>
+                            <div class="p-4 rounded-lg bg-white/5 border border-white/5 flex flex-col gap-1">
+                                <span class="text-xs text-gray-400 flex items-center gap-1"><HardDrive class="w-3 h-3" /> Memory</span>
+                                <span class="text-xl font-mono text-neon-ram">{{ formatBytes(details.memory_usage) }}</span>
+                            </div>
+                            <div class="p-4 rounded-lg bg-white/5 border border-white/5 flex flex-col gap-1">
+                                <span class="text-xs text-gray-400 flex items-center gap-1"><Clock class="w-3 h-3" /> Run Time</span>
+                                <span class="text-xl font-mono text-white">{{ formatTime(details.run_time) }}</span>
+                            </div>
+                        </div>
+
+                         <!-- Command Line Arguments -->
+                         <div class="space-y-2">
+                            <label class="text-xs uppercase font-bold text-gray-500 tracking-wider flex items-center gap-2">
+                                <Terminal class="w-3 h-3" /> Command Line
+                            </label>
+                            <div class="p-3 rounded-lg bg-black/40 border border-white/10 font-mono text-xs text-gray-300 break-all select-all flex flex-wrap gap-2">
+                                <span v-for="(arg, i) in details.cmd" :key="i" class="bg-white/5 px-2 py-1 rounded border border-white/5">
+                                    {{ arg }}
+                                </span>
+                                <span v-if="details.cmd.length === 0" class="text-white/30 italic">No arguments</span>
+                            </div>
+                        </div>
+
+                        <!-- Executable Path -->
+                        <div class="space-y-2">
+                            <label class="text-xs uppercase font-bold text-gray-500 tracking-wider flex items-center gap-2">
+                                <HardDrive class="w-3 h-3" /> Executable Path
+                            </label>
+                            <div class="p-3 rounded-lg bg-black/40 border border-white/10 font-mono text-xs text-blue-200 break-all select-all">
+                                {{ details.exe || 'N/A' }}
+                            </div>
+                        </div>
+
+                         <!-- Working Directory -->
+                        <div class="space-y-2">
+                            <label class="text-xs uppercase font-bold text-gray-500 tracking-wider flex items-center gap-2">
+                                <FolderOpen class="w-3 h-3" /> Working Directory
+                            </label>
+                            <div class="p-3 rounded-lg bg-black/40 border border-white/10 font-mono text-xs text-gray-300 break-all select-all">
+                                {{ details.cwd || 'N/A' }}
+                            </div>
+                        </div>
+
+                        <!-- Status -->
+                        <div class="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5">
+                            <span class="text-sm text-gray-400">Current Status</span>
+                            <span class="px-2 py-1 rounded text-xs font-bold bg-green-500/20 text-green-400 border border-green-500/30 uppercase tracking-wide">
+                                {{ details.status }}
+                            </span>
+                        </div>
                     </div>
-                </div>
 
-                 <!-- Working Directory -->
-                <div class="space-y-2">
-                    <label class="text-xs uppercase font-bold text-gray-500 tracking-wider flex items-center gap-2">
-                        <FolderOpen class="w-3 h-3" /> Working Directory
-                    </label>
-                    <div class="p-3 rounded-lg bg-black/40 border border-white/10 font-mono text-xs text-gray-300 break-all select-all">
-                        {{ details.cwd || 'N/A' }}
+                    <!-- Environment Tab -->
+                    <div v-else-if="activeTab === 'env'" class="space-y-4 animate-fade-in">
+                        <div v-if="envVars.length === 0" class="flex flex-col items-center justify-center py-10 text-white/30">
+                            <Layers class="w-12 h-12 mb-4 opacity-20" />
+                            <p>No environment variables available.</p>
+                        </div>
+                        <div v-else class="space-y-2">
+                             <div v-for="(env, index) in envVars" :key="index" class="p-3 rounded-lg bg-black/20 border border-white/5 text-xs font-mono break-all hover:bg-black/40 transition-colors">
+                                {{ env }}
+                             </div>
+                        </div>
                     </div>
-                </div>
 
-                <!-- Command Line Arguments -->
-                 <div class="space-y-2">
-                    <label class="text-xs uppercase font-bold text-gray-500 tracking-wider flex items-center gap-2">
-                        <Terminal class="w-3 h-3" /> Command Line
-                    </label>
-                    <div class="p-3 rounded-lg bg-black/40 border border-white/10 font-mono text-xs text-gray-400 break-all select-all max-h-32 overflow-y-auto custom-scrollbar">
-                        {{ details.cmd.join(' ') || 'N/A' }}
+                     <!-- Modules Tab (Placeholder for now) -->
+                     <div v-else-if="activeTab === 'modules'" class="flex flex-col items-center justify-center py-20 text-white/30 animate-fade-in">
+                        <Box class="w-16 h-16 mb-4 opacity-20" />
+                        <h3 class="text-lg font-medium text-white/50">Module Listing Unavailable</h3>
+                        <p class="text-sm max-w-xs text-center mt-2">
+                            Detailed module (DLL) inspection requires additional system permissions/drivers not currently implemented.
+                        </p>
                     </div>
-                </div>
 
-                 <!-- Status -->
-                <div class="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5">
-                    <span class="text-sm text-gray-400">Current Status</span>
-                    <span class="px-2 py-1 rounded text-xs font-bold bg-green-500/20 text-green-400 border border-green-500/30 uppercase tracking-wide">
-                        {{ details.status }}
-                    </span>
                 </div>
-
             </div>
         </div>
       </div>
@@ -194,11 +259,11 @@ const formatBytes = (bytes: number) => {
 }
 
 .animate-fade-in {
-    animation: fadeIn 0.3s ease-out;
+    animation: fadeIn 0.2s ease-out;
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
+    from { opacity: 0; transform: translateY(5px); }
     to { opacity: 1; transform: translateY(0); }
 }
 </style>

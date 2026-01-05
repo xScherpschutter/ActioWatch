@@ -57,6 +57,7 @@ pub struct ProcessDetails {
     pub run_time: u64,
     pub memory_usage: u64,
     pub cpu_usage: f32,
+    pub environ: Vec<String>,
 }
 
 #[derive(Serialize, Clone)]
