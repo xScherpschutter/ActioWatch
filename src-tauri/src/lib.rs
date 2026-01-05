@@ -6,6 +6,7 @@ mod tray;
 use commands::network::get_open_ports;
 use commands::process::{get_process_details, get_process_modules, kill_process};
 use commands::startup::{get_startup_apps, toggle_startup_app};
+use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -31,6 +32,24 @@ pub fn run() {
 
             // Start system monitoring in background
             monitor::start_monitoring(app.handle().clone());
+
+            // Check for --minimized argument
+            #[cfg(desktop)]
+            if let Some(window) = app.get_webview_window("main") {
+                let args: Vec<String> = std::env::args().collect();
+                if args.contains(&"--minimized".to_string()) {
+                    window.hide().unwrap();
+                }
+
+                // Handle Close Requested Event (Minimize instead of Close)
+                let window_clone = window.clone();
+                window.on_window_event(move |event| {
+                    if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                        window_clone.hide().unwrap();
+                        api.prevent_close();
+                    }
+                });
+            }
 
             Ok(())
         })
