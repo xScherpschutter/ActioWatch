@@ -55,6 +55,35 @@ fn get_process_details(pid: u32) -> Result<models::ProcessDetails, String> {
     }
 }
 
+#[tauri::command]
+fn get_open_ports() -> Result<Vec<models::PortInfo>, String> {
+    let mut ports = Vec::new();
+    let mut sys = System::new();
+    sys.refresh_processes();
+
+    // Use listeners crate to get open ports
+    let listeners = listeners::get_all().map_err(|e| e.to_string())?;
+
+    for l in listeners {
+        let pid = l.process.pid;
+        let process_name = sys
+            .process(Pid::from(pid as usize))
+            .map(|p| p.name().to_string())
+            .unwrap_or_else(|| "Unknown".to_string());
+
+        ports.push(models::PortInfo {
+            pid: Some(pid),
+            process_name,
+            port: l.socket.port(),
+            protocol: "TCP/UDP".to_string(),
+            address: l.socket.to_string(),
+        });
+    }
+
+    ports.sort_by_key(|p| p.port);
+    Ok(ports)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -65,7 +94,11 @@ pub fn run() {
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec!["--minimized"]),
         ))
-        .invoke_handler(tauri::generate_handler![kill_process, get_process_details])
+        .invoke_handler(tauri::generate_handler![
+            kill_process,
+            get_process_details,
+            get_open_ports
+        ])
         .setup(|app| {
             let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let show_i = MenuItem::with_id(app, "show", "Show", true, None::<&str>)?;

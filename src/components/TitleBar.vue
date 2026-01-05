@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { ListTree, LayoutGrid, Settings } from 'lucide-vue-next';
+import { ListTree, LayoutGrid, Settings, Network } from 'lucide-vue-next';
 
 // Props
 const props = defineProps<{
-  currentView: 'widget' | 'process' | 'settings';
+  currentView: 'widget' | 'process' | 'settings' | 'ports';
 }>();
 
 // Emits
 const emit = defineEmits<{
-  viewChange: [view: 'widget' | 'process' | 'settings'];
+  viewChange: [view: 'widget' | 'process' | 'settings' | 'ports'];
 }>();
 
 const appWindow = getCurrentWindow();
@@ -71,6 +71,14 @@ appWindow.onResized(async () => {
           title="Process Manager"
         >
           <ListTree :size="16" />
+        </button>
+        <button 
+          class="nav-btn" 
+          :class="{ active: props.currentView === 'ports' }"
+          @click="emit('viewChange', 'ports')"
+          title="Open Ports"
+        >
+          <Network :size="16" />
         </button>
         <button 
           class="nav-btn" 

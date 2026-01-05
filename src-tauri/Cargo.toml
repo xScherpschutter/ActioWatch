@@ -27,5 +27,6 @@ serde_json = "1"
 sysinfo = "0.30"
 tokio = { version = "1", features = ["full"] }
 tauri-plugin-notification = "2.3.3"
+listeners = "0.2"
 
 

@@ -42,3 +42,12 @@ pub struct ProcessDetails {
     pub memory_usage: u64,
     pub cpu_usage: f32,
 }
+
+#[derive(Serialize, Clone)]
+pub struct PortInfo {
+    pub pid: Option<u32>,
+    pub process_name: String,
+    pub port: u16,
+    pub protocol: String, // "TCP" or "UDP"
+    pub address: String,
+}
