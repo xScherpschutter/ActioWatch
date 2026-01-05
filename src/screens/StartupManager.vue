@@ -7,6 +7,7 @@ interface StartupApp {
     name: string;
     path: string;
     enabled: boolean;
+    processing?: boolean;
 }
 
 const apps = ref<StartupApp[]>([]);
@@ -19,6 +20,30 @@ const fetchStartupApps = async () => {
         console.error('Error fetching startup apps:', e);
     } finally {
         loading.value = false;
+    }
+};
+
+const toggleApp = async (app: StartupApp) => {
+    if (app.processing) return;
+    
+    app.processing = true;
+    const newState = !app.enabled;
+    
+    try {
+        await invoke('toggle_startup_app', { 
+            name: app.name, 
+            path: app.path, 
+            enable: newState 
+        });
+        
+        // Update local state on success
+        app.enabled = newState;
+    } catch (e) {
+        console.error('Failed to toggle app:', e);
+        // Revert visually if needed, but we haven't changed app.enabled yet so it's fine
+        // Ideally show a toast here
+    } finally {
+        app.processing = false;
     }
 };
 
@@ -64,11 +89,23 @@ onMounted(() => {
             </div>
 
             <!-- Toggle (Visual Only for MVP) -->
-             <div class="flex items-center gap-2">
-                <span class="text-[10px] uppercase font-bold tracking-wider" 
-                      :class="app.enabled ? 'text-green-400' : 'text-red-400'">
-                    {{ app.enabled ? 'Enabled' : 'Disabled' }}
-                </span>
+            <!-- Toggle Switch -->
+             <div class="flex items-center gap-3">
+                 <span class="text-[10px] uppercase font-bold tracking-wider" 
+                       :class="app.enabled ? 'text-neon-cpu' : 'text-white/30'">
+                     {{ app.enabled ? 'ON' : 'OFF' }}
+                 </span>
+                <button 
+                  @click.stop="toggleApp(app)"
+                  class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                  :class="app.enabled ? 'bg-neon-cpu/80' : 'bg-white/10'"
+                  :disabled="app.processing"
+                >
+                  <span 
+                    class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+                    :class="app.enabled ? 'translate-x-5' : 'translate-x-0'"
+                  />
+                </button>
              </div>
         </div>
       </div>

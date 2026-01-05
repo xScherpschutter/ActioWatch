@@ -5,7 +5,7 @@ mod tray;
 
 use commands::network::get_open_ports;
 use commands::process::{get_process_details, kill_process};
-use commands::startup::get_startup_apps;
+use commands::startup::{get_startup_apps, toggle_startup_app};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -21,7 +21,8 @@ pub fn run() {
             kill_process,
             get_process_details,
             get_open_ports,
-            get_startup_apps
+            get_startup_apps,
+            toggle_startup_app
         ])
         .setup(|app| {
             // Create tray icon
