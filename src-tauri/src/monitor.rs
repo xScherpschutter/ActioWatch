@@ -66,11 +66,20 @@ pub fn start_monitoring<R: Runtime>(app_handle: AppHandle<R>) {
             ) -> Option<ProcessInfo> {
                 if let Some(process) = sys.process(Pid::from(pid as usize)) {
                     let disk_usage = process.disk_usage();
+                    #[cfg(target_os = "linux")]
+                    let cpu_usage = {
+                        let cpu_count = sys.cpus().len() as f32;
+                        process.cpu_usage() / cpu_count
+                    };
+
+                    #[cfg(target_os = "windows")]
+                    let cpu_usage = process.cpu_usage();
+
                     let mut node = ProcessInfo {
                         pid,
                         name: process.name().to_string(),
-                        cpu_usage: process.cpu_usage(),
-                        total_cpu_usage: process.cpu_usage(),
+                        cpu_usage,
+                        total_cpu_usage: cpu_usage,
                         memory_usage: process.memory(),
                         total_memory_usage: process.memory(),
                         disk_read: disk_usage.read_bytes,
@@ -81,30 +90,26 @@ pub fn start_monitoring<R: Runtime>(app_handle: AppHandle<R>) {
                         children: Vec::new(),
                     };
 
-                    let mut children_total_cpu = 0.0;
-                    let mut children_total_mem = 0;
-                    let mut children_total_disk_read = 0;
-                    let mut children_total_disk_write = 0;
-
                     if let Some(children_pids) = children_map.get(&pid) {
                         for &child_pid in children_pids {
                             if let Some(child_node) =
                                 build_process_node(child_pid, sys, children_map)
                             {
-                                children_total_cpu += child_node.total_cpu_usage;
-                                children_total_mem += child_node.total_memory_usage;
-                                children_total_disk_read += child_node.total_disk_read;
-                                children_total_disk_write += child_node.total_disk_write;
                                 node.children.push(child_node);
                             }
                         }
                     }
 
                     // Update totals
-                    node.total_cpu_usage += children_total_cpu;
-                    node.total_memory_usage += children_total_mem;
-                    node.total_disk_read += children_total_disk_read;
-                    node.total_disk_write += children_total_disk_write;
+                    // On Windows (and others), aggregate children stats into parent.
+                    // On Linux, we skip this to avoid double counting systemd/init.
+                    #[cfg(target_os = "windows")]
+                    for child in &node.children {
+                        node.total_cpu_usage += child.total_cpu_usage;
+                        node.total_memory_usage += child.total_memory_usage;
+                        node.total_disk_read += child.total_disk_read;
+                        node.total_disk_write += child.total_disk_write;
+                    }
 
                     // Sort children by Total CPU usage
                     node.children.sort_by(|a, b| {

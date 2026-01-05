@@ -1,8 +1,7 @@
 use crate::models::StartupApp;
 
 #[cfg(target_os = "windows")]
-use winreg::enums::*;
-use winreg::RegKey;
+use winreg::{enums::*, RegKey};
 
 #[tauri::command]
 pub fn get_startup_apps() -> Result<Vec<StartupApp>, String> {
@@ -126,6 +125,7 @@ pub fn toggle_startup_app(name: String, path: String, enable: bool) -> Result<()
                 let _ = run_key.delete_value(&name);
             }
         }
+        return Ok(());
     }
 
     #[cfg(target_os = "linux")]
@@ -135,7 +135,7 @@ pub fn toggle_startup_app(name: String, path: String, enable: bool) -> Result<()
             .or_else(|_| {
                 std::env::var("HOME").map(|home| std::path::Path::new(&home).join(".config"))
             })
-            .ok_or("Could not find config directory")?;
+            .map_err(|_| "Could not find config directory")?;
 
         let autostart_dir = config_dir.join("autostart");
 
@@ -184,8 +184,6 @@ pub fn toggle_startup_app(name: String, path: String, enable: bool) -> Result<()
 
     #[cfg(not(any(target_os = "windows", target_os = "linux")))]
     {
-        Err("Unsupported OS".to_string())
+        return Err("Unsupported OS".to_string());
     }
-
-    Ok(())
 }
