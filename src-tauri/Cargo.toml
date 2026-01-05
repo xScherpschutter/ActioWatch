@@ -30,6 +30,7 @@ tauri-plugin-notification = "2.3.3"
 listeners = "0.2"
 
 [target.'cfg(windows)'.dependencies]
+windows = { version = "0.62.2", features = ["Win32_System_ProcessStatus", "Win32_Foundation", "Win32_System_Threading", "Win32_Security"] }
 winreg = "0.52"
 
 

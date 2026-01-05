@@ -68,3 +68,9 @@ pub struct PortInfo {
     pub protocol: String, // "TCP" or "UDP"
     pub address: String,
 }
+
+#[derive(Serialize, Clone)]
+pub struct ModuleInfo {
+    pub name: String,
+    pub path: String,
+}

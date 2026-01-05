@@ -4,7 +4,7 @@ mod monitor;
 mod tray;
 
 use commands::network::get_open_ports;
-use commands::process::{get_process_details, kill_process};
+use commands::process::{get_process_details, get_process_modules, kill_process};
 use commands::startup::{get_startup_apps, toggle_startup_app};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -20,6 +20,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             kill_process,
             get_process_details,
+            get_process_modules,
             get_open_ports,
             get_startup_apps,
             toggle_startup_app
