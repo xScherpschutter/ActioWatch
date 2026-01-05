@@ -13,6 +13,8 @@ pub fn start_monitoring<R: Runtime>(app_handle: AppHandle<R>) {
         let mut high_cpu_count = 0;
         let mut high_memory_count = 0;
         let mut notified_pids = HashSet::new();
+        let mut last_high_cpu_notification = std::time::Instant::now() - Duration::from_secs(60);
+        let mut last_high_memory_notification = std::time::Instant::now() - Duration::from_secs(60);
 
         loop {
             // Refresh CPU, Memory, Processes and Networks
@@ -66,14 +68,10 @@ pub fn start_monitoring<R: Runtime>(app_handle: AppHandle<R>) {
             ) -> Option<ProcessInfo> {
                 if let Some(process) = sys.process(Pid::from(pid as usize)) {
                     let disk_usage = process.disk_usage();
-                    #[cfg(target_os = "linux")]
-                    let cpu_usage = {
-                        let cpu_count = sys.cpus().len() as f32;
-                        process.cpu_usage() / cpu_count
-                    };
+                    let cpu_count = sys.cpus().len() as f32;
 
-                    #[cfg(target_os = "windows")]
-                    let cpu_usage = process.cpu_usage();
+                    // Normalize CPU usage (0-100%) on all platforms
+                    let cpu_usage = process.cpu_usage() / cpu_count;
 
                     let mut node = ProcessInfo {
                         pid,
@@ -200,14 +198,17 @@ pub fn start_monitoring<R: Runtime>(app_handle: AppHandle<R>) {
                 high_cpu_count = 0;
             }
 
-            if high_cpu_count >= 3 {
-                // Show native notification for High CPU
-                let _ = app_handle
-                    .notification()
-                    .builder()
-                    .title("High CPU Alert")
-                    .body("System CPU usage is critically high (> 90%)")
-                    .show();
+            if high_cpu_count >= 5 {
+                if last_high_cpu_notification.elapsed() > Duration::from_secs(60) {
+                    let _ = app_handle
+                        .notification()
+                        .builder()
+                        .title("High CPU Alert")
+                        .body("System CPU usage is critically high (> 90%)")
+                        .show();
+
+                    last_high_cpu_notification = std::time::Instant::now();
+                }
 
                 // Reset counter to avoid spamming immediately
                 high_cpu_count = 0;
@@ -243,15 +244,18 @@ pub fn start_monitoring<R: Runtime>(app_handle: AppHandle<R>) {
             }
 
             if high_memory_count >= 3 {
-                let _ = app_handle
-                    .notification()
-                    .builder()
-                    .title("Memory Alert")
-                    .body(&format!(
-                        "System memory usage is critically high ({:.1}%)",
-                        memory_used as f64 / memory_total as f64 * 100.0
-                    ))
-                    .show();
+                if last_high_memory_notification.elapsed() > Duration::from_secs(60) {
+                    let _ = app_handle
+                        .notification()
+                        .builder()
+                        .title("Memory Alert")
+                        .body(&format!(
+                            "System memory usage is critically high ({:.1}%)",
+                            memory_used as f64 / memory_total as f64 * 100.0
+                        ))
+                        .show();
+                    last_high_memory_notification = std::time::Instant::now();
+                }
 
                 high_memory_count = 0;
             }
