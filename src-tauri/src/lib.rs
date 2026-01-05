@@ -184,24 +184,36 @@ pub fn run() {
                                 pid,
                                 name: process.name().to_string(),
                                 cpu_usage: process.cpu_usage(),
+                                total_cpu_usage: process.cpu_usage(), // Init with self
                                 memory_usage: process.memory(),
+                                total_memory_usage: process.memory(), // Init with self
                                 thread_count: process.tasks().map(|t| t.len() as u64).unwrap_or(0),
                                 children: Vec::new(),
                             };
+
+                            let mut children_total_cpu = 0.0;
+                            let mut children_total_mem = 0;
 
                             if let Some(children_pids) = children_map.get(&pid) {
                                 for &child_pid in children_pids {
                                     if let Some(child_node) =
                                         build_process_node(child_pid, sys, children_map)
                                     {
+                                        children_total_cpu += child_node.total_cpu_usage;
+                                        children_total_mem += child_node.total_memory_usage;
                                         node.children.push(child_node);
                                     }
                                 }
                             }
-                            // Sort children by CPU usage
+
+                            // Update totals with children sums
+                            node.total_cpu_usage += children_total_cpu;
+                            node.total_memory_usage += children_total_mem;
+
+                            // Sort children by Total CPU usage to keep most interesting branches on top
                             node.children.sort_by(|a, b| {
-                                b.cpu_usage
-                                    .partial_cmp(&a.cpu_usage)
+                                b.total_cpu_usage
+                                    .partial_cmp(&a.total_cpu_usage)
                                     .unwrap_or(std::cmp::Ordering::Equal)
                             });
 
@@ -241,8 +253,8 @@ pub fn run() {
 
                     // Sort root processes by CPU usage (descending)
                     processes.sort_by(|a, b| {
-                        b.cpu_usage
-                            .partial_cmp(&a.cpu_usage)
+                        b.total_cpu_usage
+                            .partial_cmp(&a.total_cpu_usage)
                             .unwrap_or(std::cmp::Ordering::Equal)
                     });
 

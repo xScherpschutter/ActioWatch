@@ -5,7 +5,9 @@ pub struct ProcessInfo {
     pub pid: u32,
     pub name: String,
     pub cpu_usage: f32,
+    pub total_cpu_usage: f32,
     pub memory_usage: u64,
+    pub total_memory_usage: u64,
     pub thread_count: u64,
     pub children: Vec<ProcessInfo>,
 }

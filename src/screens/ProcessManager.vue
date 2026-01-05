@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { Search, X, Box, ListTree, List, Info } from 'lucide-vue-next';
+import { Search, X, Box, ListTree, List, Info, ChevronRight, ChevronDown, ChevronsDown, ChevronsRight } from 'lucide-vue-next';
 import { isWindows } from "../utils/platform";
 import ProcessDetailsModal from '../components/ProcessDetailsModal.vue';
 
@@ -8,7 +8,9 @@ interface ProcessInfo {
   pid: number;
   name: string;
   cpu_usage: number;
+  total_cpu_usage: number;
   memory_usage: number;
+  total_memory_usage: number;
   thread_count: number;
   children: ProcessInfo[];
 }
@@ -16,6 +18,7 @@ interface ProcessInfo {
 interface TreeNode extends ProcessInfo {
   level: number;
   isOpen: boolean; 
+  hasChildren: boolean;
 }
 
 const props = defineProps<{
@@ -30,6 +33,34 @@ const emit = defineEmits(['kill-process']);
 const searchQuery = ref('');
 const viewMode = ref<'list' | 'tree'>('list');
 const isWindowsPlatform = ref(false);
+
+const collapsedPids = ref(new Set<number>());
+
+const toggleCollapse = (pid: number) => {
+  if (collapsedPids.value.has(pid)) {
+    collapsedPids.value.delete(pid);
+  } else {
+    collapsedPids.value.add(pid);
+  }
+};
+
+const expandAll = () => {
+    collapsedPids.value.clear();
+};
+
+const collapseAll = () => {
+    const allPidsWithChildren = new Set<number>();
+    const findParents = (nodes: ProcessInfo[]) => {
+        for (const node of nodes) {
+            if (node.children && node.children.length > 0) {
+                allPidsWithChildren.add(node.pid);
+                findParents(node.children);
+            }
+        }
+    };
+    findParents(props.processes);
+    collapsedPids.value = allPidsWithChildren;
+};
 
 // Modal State
 const showDetailsModal = ref(false);
@@ -79,7 +110,7 @@ const processedData = computed(() => {
     let result: TreeNode[] = [];
     nodes.forEach(node => {
       // Add self
-      result.push({ ...node, level: 0, isOpen: true });
+      result.push({ ...node, level: 0, isOpen: true, hasChildren: node.children && node.children.length > 0 });
       // Add children (recurse)
       result = result.concat(flatten(node.children));
     });
@@ -89,8 +120,16 @@ const processedData = computed(() => {
   const traverseTree = (nodes: ProcessInfo[], level: number): TreeNode[] => {
       let result: TreeNode[] = [];
       nodes.forEach(node => {
-          result.push({ ...node, level: level, isOpen: true });
-          result = result.concat(traverseTree(node.children, level + 1));
+          const isCollapsed = collapsedPids.value.has(node.pid);
+          // Standard Tree View: Expanded by default unless in collapsedPids set
+          const isOpen = !isCollapsed;
+          const hasChildren = node.children && node.children.length > 0;
+          
+          result.push({ ...node, level: level, isOpen, hasChildren });
+          
+          if (isOpen && hasChildren) {
+              result = result.concat(traverseTree(node.children, level + 1));
+          }
       });
       return result;
   }
@@ -98,12 +137,30 @@ const processedData = computed(() => {
   // Filter first if searching
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase();
-    // Use flat list for search
-    const allProcesses = flatten(props.processes);
-    return allProcesses.filter(p => 
-      p.name.toLowerCase().includes(query) || 
-      p.pid.toString().includes(query)
-    );
+    
+    if (viewMode.value === 'tree') {
+        const matches: ProcessInfo[] = [];
+        const findMatches = (nodes: ProcessInfo[]) => {
+            nodes.forEach(node => {
+                if (node.name.toLowerCase().includes(query) || node.pid.toString().includes(query)) {
+                    matches.push(node);
+                }
+                if (node.children) {
+                    findMatches(node.children);
+                }
+            });
+        };
+        findMatches(props.processes);
+        // Return matches as roots, enabling expansion of their children via traverseTree
+        return traverseTree(matches, 0);
+    } else {
+        // List mode: Flat filter
+        const allProcesses = flatten(props.processes);
+        return allProcesses.filter(p => 
+          p.name.toLowerCase().includes(query) || 
+          p.pid.toString().includes(query)
+        ).sort((a, b) => (b.total_cpu_usage || 0) - (a.total_cpu_usage || 0));
+    }
   }
 
   if (viewMode.value === 'tree') {
@@ -113,7 +170,8 @@ const processedData = computed(() => {
   } else {
     // List mode: Flatten and Sort by CPU
     const flat = flatten(props.processes);
-    return flat.sort((a, b) => b.cpu_usage - a.cpu_usage);
+    // Sort logic safeguarded
+    return flat.sort((a, b) => (b.total_cpu_usage || 0) - (a.total_cpu_usage || 0));
   }
 });
 
@@ -142,6 +200,24 @@ const formatBytes = (bytes: number) => {
           placeholder="Filter processes by name or PID..." 
           class="w-full glass-input border border-white/10 rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-neon-cpu/50 focus:ring-1 focus:ring-neon-cpu/50 transition-all placeholder-gray-600"
         />
+      </div>
+
+       <!-- Expand/Collapse Controls (Only in Tree Mode) -->
+      <div v-if="viewMode === 'tree'" class="flex bg-white/5 rounded-lg p-1 border border-white/10">
+          <button 
+           @click="expandAll"
+           class="p-2 rounded-md transition-all text-gray-400 hover:text-white hover:bg-white/10"
+           title="Expand All"
+          >
+            <ChevronsDown class="w-4 h-4" />
+          </button>
+           <button 
+           @click="collapseAll"
+           class="p-2 rounded-md transition-all text-gray-400 hover:text-white hover:bg-white/10"
+           title="Collapse All"
+          >
+            <ChevronsRight class="w-4 h-4" />
+          </button>
       </div>
 
       <!-- View Toggle -->
@@ -180,12 +256,22 @@ const formatBytes = (bytes: number) => {
            class="grid grid-cols-12 gap-4 px-4 py-2 items-center hover:bg-white/5 rounded-lg transition-colors group border-b border-white/5 last:border-0">
         
         <!-- Name (with Indentation for Tree) -->
-        <div :class="isWindowsPlatform ? 'col-span-5' : 'col-span-4'" class="flex items-center gap-3 overflow-hidden">
-           <div :style="{ marginLeft: `${process.level * 20}px` }" class="flex-shrink-0 transition-all duration-300">
-              <div v-if="process.level > 0" class="w-3 h-4 border-l border-b border-white/20 inline-block -translate-y-1 mr-2"></div>
-           </div>
+        <div :class="isWindowsPlatform ? 'col-span-5' : 'col-span-4'" class="flex items-center gap-2 overflow-hidden">
+           <!-- Indentation Spacer -->
+           <div :style="{ width: `${process.level * 20}px` }" class="flex-shrink-0 transition-all duration-300"></div>
 
-          <div class="w-8 h-8 rounded shrink-0 bg-white/10 flex items-center justify-center text-cyan-400" :class="{'ml-2': process.level > 0}">
+           <!-- Expand/Collapse Button (Tree View Only) -->
+           <button 
+             v-if="viewMode === 'tree' && process.hasChildren"
+             @click.stop="toggleCollapse(process.pid)"
+             class="p-0.5 rounded hover:bg-white/10 text-gray-400 hover:text-white transition-colors flex-shrink-0"
+           >
+             <component :is="process.isOpen ? ChevronDown : ChevronRight" class="w-3 h-3" />
+           </button>
+           <!-- Spacer if no children but indented -->
+           <div v-else-if="viewMode === 'tree'" class="w-4 flex-shrink-0"></div>
+
+          <div class="w-8 h-8 rounded shrink-0 bg-white/10 flex items-center justify-center text-cyan-400">
             <Box class="w-4 h-4" />
           </div>
           <div class="flex flex-col truncate min-w-0">
@@ -208,13 +294,14 @@ const formatBytes = (bytes: number) => {
         <div class="col-span-2">
           <div class="flex flex-col gap-1">
             <div class="flex justify-between text-[10px] text-white/70 font-mono">
-              <span>{{ process.cpu_usage.toFixed(1) }}%</span>
+              <!-- Safety check for total_cpu_usage -->
+              <span>{{ (process.total_cpu_usage || 0).toFixed(1) }}%</span>
             </div>
             <div class="h-1.5 bg-gray-700/50 rounded-full overflow-hidden">
               <div 
                 class="h-full rounded-full transition-all duration-500"
-                :class="getUsageColor(process.cpu_usage)"
-                :style="{ width: `${Math.min(process.cpu_usage, 100)}%` }"
+                :class="getUsageColor(process.total_cpu_usage || 0)"
+                :style="{ width: `${Math.min(process.total_cpu_usage || 0, 100)}%` }"
               ></div>
             </div>
           </div>
@@ -224,12 +311,13 @@ const formatBytes = (bytes: number) => {
         <div class="col-span-2">
           <div class="flex flex-col gap-1">
             <div class="flex justify-between text-[10px] text-white/70 font-mono">
-              <span>{{ formatBytes(process.memory_usage) }}</span>
+              <!-- Safety check for total_memory_usage -->
+              <span>{{ formatBytes(process.total_memory_usage || 0) }}</span>
             </div>
             <div class="h-1.5 bg-gray-700/50 rounded-full overflow-hidden">
               <div 
                 class="h-full bg-neon-ram rounded-full transition-all duration-500"
-                :style="{ width: `${Math.min((process.memory_usage / memoryTotal) * 100, 100)}%` }"
+                :style="{ width: `${Math.min((process.total_memory_usage / memoryTotal) * 100, 100)}%` }"
               ></div>
             </div>
           </div>
