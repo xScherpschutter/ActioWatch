@@ -14,15 +14,18 @@ Temperatura de CPU y GPU.
 Velocidad de ventiladores (si es accesible).
 Voltajes.
 Implementación: La librería sysinfo ya tiene soporte para Components (sensores de temperatura).
+
 3. Gestor de Aplicaciones de Inicio (Startup)
 Idea: Una vista para ver qué programas se ejecutan al iniciar Windows y permitir habilitarlos/deshabilitarlos o eliminarlos.
 Utilidad: Ayuda a mejorar el tiempo de arranque del sistema.
+
 4. Información Avanzada del Proceso
 Actualmente el modal de detalles es básico. Podríamos añadir:
 
 Módulos Cargados: Ver qué .dll está usando un proceso.
 Variables de Entorno: Ver el PATH y otras variables del proceso.
 Línea de Comandos Completa: Útil para ver con qué argumentos se lanzó un programa (Java, Python, node, etc.).
+
 5. Personalización (Temas)
 Tu diseño "Neon" está genial, pero permitir personalización sería un plus.
 

@@ -1,4 +1,11 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct StartupApp {
+    pub name: String,
+    pub path: String,
+    pub enabled: bool,
+}
 
 #[derive(Serialize, Clone)]
 pub struct ProcessInfo {

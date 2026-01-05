@@ -7,13 +7,15 @@ import ProcessManager from "./screens/ProcessManager.vue";
 import Settings from "./screens/Settings.vue";
 import PortManager from "./screens/PortManager.vue";
 import HardwareMonitor from "./screens/HardwareMonitor.vue";
+import StartupManager from "./screens/StartupManager.vue";
+
 import ToastNotification from "./components/ToastNotification.vue";
 import TitleBar from "./components/TitleBar.vue";
 import { isWindows } from "./utils/platform";
 
 
 // State
-const currentView = ref<'widget' | 'process' | 'settings' | 'ports' | 'hardware'>('process'); // Default to process manager for now
+const currentView = ref<'widget' | 'process' | 'settings' | 'ports' | 'hardware' | 'startup'>('process'); // Default to process manager for now
 const stats = ref<{
   cpu_usage: number;
   memory_used: number;
@@ -58,7 +60,7 @@ onMounted(async () => {
 
   // Listen for view changes from tray
   unlistenViewChange = await listen('view-change', (event: any) => {
-    currentView.value = event.payload as 'widget' | 'process' | 'settings' | 'ports';
+    currentView.value = event.payload as 'widget' | 'process' | 'settings' | 'ports' | 'hardware' | 'startup';
   });
 });
 
@@ -107,7 +109,7 @@ const killProcess = async (pid: number) => {
     <div :class="['flex-grow overflow-hidden', showTitleBar ? 'mt-8' : '']">
       <Transition mode="out-in" enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0 scale-95" enter-to-class="opacity-100 scale-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100 scale-100" leave-to-class="opacity-0 scale-95">
         <component 
-          :is="currentView === 'widget' ? Widget : currentView === 'settings' ? Settings : currentView === 'ports' ? PortManager : currentView === 'hardware' ? HardwareMonitor : ProcessManager"
+          :is="currentView === 'widget' ? Widget : currentView === 'settings' ? Settings : currentView === 'ports' ? PortManager : currentView === 'hardware' ? HardwareMonitor : currentView === 'startup' ? StartupManager : ProcessManager"
           :stats="stats"
           :processes="stats.top_processes"
           :totalCpu="stats.cpu_usage"

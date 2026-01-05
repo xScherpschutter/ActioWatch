@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { ListTree, LayoutGrid, Settings, Network, Thermometer } from 'lucide-vue-next';
+import { ListTree, LayoutGrid, Settings, Network, Thermometer, Rocket } from 'lucide-vue-next';
 
 // Props
 const props = defineProps<{
-  currentView: 'widget' | 'process' | 'settings' | 'ports' | 'hardware';
+  currentView: 'widget' | 'process' | 'settings' | 'ports' | 'hardware' | 'startup';
 }>();
 
 // Emits
 const emit = defineEmits<{
-  viewChange: [view: 'widget' | 'process' | 'settings' | 'ports' | 'hardware'];
+  viewChange: [view: 'widget' | 'process' | 'settings' | 'ports' | 'hardware' | 'startup'];
 }>();
 
 const appWindow = getCurrentWindow();
@@ -87,6 +87,14 @@ appWindow.onResized(async () => {
           title="Hardware Monitor"
         >
           <Thermometer :size="16" />
+        </button>
+         <button 
+          class="nav-btn" 
+          :class="{ active: props.currentView === 'startup' }"
+          @click="emit('viewChange', 'startup')"
+          title="Startup Apps"
+        >
+          <Rocket :size="16" />
         </button>
         <button 
           class="nav-btn" 
