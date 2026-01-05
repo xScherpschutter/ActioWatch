@@ -8,10 +8,9 @@ import Settings from "./screens/Settings.vue";
 import PortManager from "./screens/PortManager.vue";
 import HardwareMonitor from "./screens/HardwareMonitor.vue";
 import StartupManager from "./screens/StartupManager.vue";
-
 import ToastNotification from "./components/ToastNotification.vue";
 import TitleBar from "./components/TitleBar.vue";
-import { isWindows } from "./utils/platform";
+
 
 
 // State
@@ -30,11 +29,12 @@ const stats = ref<{
   memory_total: 0,
   network_up: 0,
   network_down: 0,
+  components: [],
   top_processes: []
 });
 
 // Platform detection
-const showTitleBar = ref(false);
+const showTitleBar = ref(true);
 
 // Notifications
 const showNotification = ref(false);
@@ -50,8 +50,7 @@ let unlistenStats: () => void;
 let unlistenViewChange: () => void;
 
 onMounted(async () => {
-  // Check platform and show title bar only on Windows
-  showTitleBar.value = await isWindows();
+
 
   // Listen for stats updates
   unlistenStats = await listen('stats-update', (event: any) => {

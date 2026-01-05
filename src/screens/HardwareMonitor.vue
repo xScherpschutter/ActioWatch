@@ -8,9 +8,11 @@ interface ComponentInfo {
   critical_temperature: number | null;
 }
 
-const props = defineProps<{
-  components: ComponentInfo[];
-}>();
+const props = withDefaults(defineProps<{
+  components?: ComponentInfo[];
+}>(), {
+  components: () => []
+});
 
 const getTempColor = (temp: number, critical: number | null) => {
   if (critical && temp >= critical) return 'text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]';
@@ -51,8 +53,8 @@ const getProgressBarColor = (temp: number) => {
                      <span class="text-[10px] text-white/40 uppercase tracking-widest font-bold">Temperature</span>
                 </div>
             </div>
-            <div class="text-2xl font-mono font-bold" :class="getTempColor(comp.temperature, comp.critical_temperature)">
-                {{ comp.temperature.toFixed(0) }}°C
+            <div class="text-2xl font-mono font-bold" :class="getTempColor(comp.temperature || 0, comp.critical_temperature)">
+                {{ (comp.temperature || 0).toFixed(0) }}°C
             </div>
         </div>
 
@@ -65,8 +67,8 @@ const getProgressBarColor = (temp: number) => {
             </div>
             <div class="h-2 bg-gray-700/50 rounded-full overflow-hidden">
                 <div class="h-full rounded-full transition-all duration-1000 ease-out"
-                     :class="getProgressBarColor(comp.temperature)"
-                     :style="{ width: `${Math.min((comp.temperature / (comp.critical_temperature || 100)) * 100, 100)}%` }">
+                     :class="getProgressBarColor(comp.temperature || 0)"
+                     :style="{ width: `${Math.min(((comp.temperature || 0) / (comp.critical_temperature || 100)) * 100, 100)}%` }">
                 </div>
             </div>
         </div>
