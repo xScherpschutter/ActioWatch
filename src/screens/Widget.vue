@@ -145,8 +145,8 @@ const formatBytes = (bytes: number) => {
       <div class="flex flex-col gap-1">
          <div v-for="comp in props.stats.components.slice(0, 3)" :key="comp.label" class="flex justify-between text-xs items-center">
              <span class="text-gray-400 truncate w-24" :title="comp.label">{{ comp.label }}</span>
-             <span class="font-mono font-bold" :class="comp.temperature > 80 ? 'text-orange-500' : 'text-neon-cpu'">
-                 {{ comp.temperature.toFixed(0) }}°C
+             <span class="font-mono font-bold" :class="(comp.temperature || 0) > 80 ? 'text-orange-500' : 'text-neon-cpu'">
+                 {{ (comp.temperature || 0).toFixed(0) }}°C
              </span>
          </div>
       </div>

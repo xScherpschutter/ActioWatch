@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { Search, X, Box, ListTree, List, Info, ChevronRight, ChevronDown, ChevronsDown, ChevronsRight } from 'lucide-vue-next';
-import { isWindows } from "../utils/platform";
+import { isWindows, isLinux } from "../utils/platform";
 import ProcessDetailsModal from '../components/ProcessDetailsModal.vue';
 import ConfirmationModal from '../components/ConfirmationModal.vue';
 
@@ -43,6 +43,7 @@ const emit = defineEmits(['kill-process']);
 const searchQuery = ref('');
 const viewMode = ref<'list' | 'tree'>('list');
 const isWindowsPlatform = ref(false);
+const isLinuxPlatform = ref(false);
 
 const collapsedPids = ref(new Set<number>());
 
@@ -100,6 +101,7 @@ const executeKill = () => {
 
 onMounted(async () => {
   isWindowsPlatform.value = await isWindows();
+  isLinuxPlatform.value = await isLinux();
 });
 
 // Helper to calculate total count for footer
@@ -108,6 +110,18 @@ const totalProcesses = computed(() => {
   const traverse = (nodes: ProcessInfo[]) => {
     for (const node of nodes) {
       count++;
+      traverse(node.children);
+    }
+  };
+  traverse(props.processes);
+  return count;
+});
+
+const totalThreads = computed(() => {
+  let count = 0;
+  const traverse = (nodes: ProcessInfo[]) => {
+    for (const node of nodes) {
+      count += node.thread_count || 0;
       traverse(node.children);
     }
   };
@@ -282,7 +296,9 @@ const formatNetworkBytes = (bytes: number) => {
       <div class="col-span-3">Process Name</div>
       <!-- PID (1 col) -->
       <div class="col-span-1">PID</div>
-      <!-- CPU (2 cols) -> Reduced to 1.5? No, keep 2 -->
+      <!-- Threads (1 col) -->
+      <div v-if="isLinuxPlatform" class="col-span-1">Threads</div>
+      <!-- CPU (2 cols) -->
       <div class="col-span-2">CPU %</div>
       <!-- Memory (2 cols) -->
       <div class="col-span-2">Memory</div>
@@ -291,8 +307,8 @@ const formatNetworkBytes = (bytes: number) => {
           <span>Disk R</span>
           <span>Disk W</span>
       </div>
-      <!-- Action (2 cols) -->
-      <div class="col-span-2 text-right">Action</div>
+      <!-- Action (1 col on Linux, 2 on others) -->
+      <div :class="isLinuxPlatform ? 'col-span-1' : 'col-span-2'" class="text-right">Action</div>
     </div>
 
     <!-- Process List -->
@@ -328,6 +344,11 @@ const formatNetworkBytes = (bytes: number) => {
         <!-- PID -->
         <div class="col-span-1 font-mono text-xs text-white/60">
           {{ process.pid }}
+        </div>
+
+        <!-- Threads -->
+        <div v-if="isLinuxPlatform" class="col-span-1 font-mono text-xs text-white/60">
+          {{ process.thread_count }}
         </div>
 
         <!-- CPU -->
@@ -370,7 +391,7 @@ const formatNetworkBytes = (bytes: number) => {
         </div>
 
         <!-- Action -->
-        <div class="col-span-2 flex justify-end gap-2">
+        <div :class="isLinuxPlatform ? 'col-span-1' : 'col-span-2'" class="flex justify-end gap-2">
            <button @click="openDetails(process.pid)" 
                   class="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-white/10 hover:border-white/20 border border-transparent transition-all"
                   title="View Details">
@@ -398,6 +419,11 @@ const formatNetworkBytes = (bytes: number) => {
         <div class="flex flex-col">
           <span class="text-[10px] text-white/60 uppercase font-bold">Total Processes</span>
           <span class="text-lg font-mono text-white">{{ totalProcesses }}</span>
+        </div>
+        
+        <div v-if="isLinuxPlatform" class="flex flex-col">
+          <span class="text-[10px] text-white/60 uppercase font-bold">Total Threads</span>
+          <span class="text-lg font-mono text-white">{{ totalThreads }}</span>
         </div>
       </div>
 
