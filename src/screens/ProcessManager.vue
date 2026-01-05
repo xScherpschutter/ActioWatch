@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue';
 import { Search, X, Box, ListTree, List, Info, ChevronRight, ChevronDown, ChevronsDown, ChevronsRight } from 'lucide-vue-next';
 import { isWindows } from "../utils/platform";
 import ProcessDetailsModal from '../components/ProcessDetailsModal.vue';
+import ConfirmationModal from '../components/ConfirmationModal.vue';
 
 interface ProcessInfo {
   pid: number;
@@ -78,6 +79,23 @@ const selectedProcessPid = ref<number | null>(null);
 const openDetails = (pid: number) => {
     selectedProcessPid.value = pid;
     showDetailsModal.value = true;
+};
+
+// Confirmation State
+const showConfirmation = ref(false);
+const processToKill = ref<ProcessInfo | null>(null);
+
+const confirmKill = (process: ProcessInfo) => {
+    processToKill.value = process;
+    showConfirmation.value = true;
+};
+
+const executeKill = () => {
+    if (processToKill.value) {
+        emit('kill-process', processToKill.value.pid);
+        showConfirmation.value = false;
+        processToKill.value = null;
+    }
 };
 
 onMounted(async () => {
@@ -358,7 +376,7 @@ const formatNetworkBytes = (bytes: number) => {
                   title="View Details">
             <Info class="w-4 h-4" />
           </button>
-          <button @click="emit('kill-process', process.pid)" 
+          <button @click="confirmKill(process)" 
                   class="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-red-500/20 hover:border-red-500/50 border border-transparent transition-all"
                   title="Kill Process">
             <X class="w-4 h-4" />
@@ -427,6 +445,15 @@ const formatNetworkBytes = (bytes: number) => {
         :is-open="showDetailsModal" 
         :pid="selectedProcessPid" 
         @close="showDetailsModal = false" 
+    />
+
+    <ConfirmationModal
+        :is-open="showConfirmation"
+        title="Kill Process?"
+        :message="`Are you sure you want to terminate ${processToKill?.name} (PID: ${processToKill?.pid})? Unsaved data may be lost.`"
+        confirm-text="Kill Process"
+        @confirm="executeKill"
+        @cancel="showConfirmation = false"
     />
 
   </div>

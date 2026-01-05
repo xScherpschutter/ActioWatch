@@ -69,6 +69,41 @@ const envVars = computed(() => {
     if (!details.value?.environ) return [];
     return details.value.environ;
 });
+
+interface ModuleInfo {
+  name: string;
+  path: string;
+}
+
+const modules = ref<ModuleInfo[]>([]);
+const modulesLoading = ref(false);
+const modulesLoaded = ref(false);
+
+const fetchModules = async () => {
+    if (!props.pid || modulesLoaded.value) return;
+    
+    modulesLoading.value = true;
+    try {
+        modules.value = await invoke('get_process_modules', { pid: props.pid });
+        modulesLoaded.value = true;
+    } catch (e) {
+        console.error("Failed to fetch modules", e);
+    } finally {
+        modulesLoading.value = false;
+    }
+};
+
+watch(activeTab, (newTab) => {
+    if (newTab === 'modules') {
+        fetchModules();
+    }
+});
+
+watch(() => props.pid, () => {
+    // Reset module state on new PID
+    modules.value = [];
+    modulesLoaded.value = false;
+});
 </script>
 
 <template>
@@ -122,10 +157,10 @@ const envVars = computed(() => {
             </div>
 
             <!-- Content -->
-            <div v-else-if="details" class="flex flex-col h-full">
+            <div v-else-if="details" class="flex flex-col h-full overflow-hidden">
                 
                 <!-- Tabs -->
-                <div class="flex border-b border-white/5 px-6">
+                <div class="flex border-b border-white/5 px-6 shrink-0">
                     <button 
                         @click="activeTab = 'general'"
                         class="px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2"
@@ -147,11 +182,12 @@ const envVars = computed(() => {
                         :class="activeTab === 'modules' ? 'border-neon-cpu text-white' : 'border-transparent text-gray-400 hover:text-white'"
                     >
                         <Box class="w-4 h-4" /> Modules
+                        <span v-if="modules.length > 0" class="text-[10px] bg-white/10 px-1.5 rounded">{{ modules.length }}</span>
                     </button>
                 </div>
 
                 <!-- Tab Panels -->
-                <div class="p-6 overflow-y-auto custom-scrollbar flex-grow">
+                <div class="p-6 overflow-y-auto custom-scrollbar flex-grow min-h-0">
                     
                     <!-- General Tab -->
                     <div v-if="activeTab === 'general'" class="space-y-6 animate-fade-in">
@@ -226,13 +262,22 @@ const envVars = computed(() => {
                         </div>
                     </div>
 
-                     <!-- Modules Tab (Placeholder for now) -->
-                     <div v-else-if="activeTab === 'modules'" class="flex flex-col items-center justify-center py-20 text-white/30 animate-fade-in">
-                        <Box class="w-16 h-16 mb-4 opacity-20" />
-                        <h3 class="text-lg font-medium text-white/50">Module Listing Unavailable</h3>
-                        <p class="text-sm max-w-xs text-center mt-2">
-                            Detailed module (DLL) inspection requires additional system permissions/drivers not currently implemented.
-                        </p>
+                     <!-- Modules Tab -->
+                     <div v-else-if="activeTab === 'modules'" class="space-y-4 animate-fade-in">
+                        <div v-if="modulesLoading" class="flex flex-col items-center justify-center py-12">
+                            <div class="w-6 h-6 border-2 border-neon-cpu border-t-transparent rounded-full animate-spin"></div>
+                             <p class="mt-2 text-xs text-gray-400">Loading modules...</p>
+                        </div>
+                        <div v-else-if="modules.length === 0" class="flex flex-col items-center justify-center py-10 text-white/30">
+                            <Box class="w-12 h-12 mb-4 opacity-20" />
+                            <p>No modules found or accessible.</p>
+                        </div>
+                        <div v-else class="space-y-2">
+                             <div v-for="(mod, index) in modules" :key="index" class="p-3 rounded-lg bg-black/20 border border-white/5 hover:bg-black/40 transition-colors flex flex-col gap-1">
+                                <span class="text-sm font-bold text-white/90">{{ mod.name }}</span>
+                                <span class="text-[10px] font-mono text-gray-400 break-all">{{ mod.path }}</span>
+                             </div>
+                        </div>
                     </div>
 
                 </div>

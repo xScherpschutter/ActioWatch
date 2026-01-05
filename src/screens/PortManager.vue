@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
-import { RefreshCcw } from 'lucide-vue-next';
+import { RefreshCcw, Skull } from 'lucide-vue-next';
+import ConfirmationModal from '../components/ConfirmationModal.vue';
 
 interface PortInfo {
   pid: number | null;
@@ -14,6 +15,31 @@ interface PortInfo {
 const ports = ref<PortInfo[]>([]);
 const loading = ref(false);
 const searchQuery = ref('');
+
+// Confirmation State
+const showConfirmation = ref(false);
+const processToKill = ref<PortInfo | null>(null);
+
+const confirmKill = (port: PortInfo) => {
+    if (!port.pid) return;
+    processToKill.value = port;
+    showConfirmation.value = true;
+};
+
+const executeKill = async () => {
+    if (!processToKill.value?.pid) return;
+    
+    try {
+        await invoke('kill_process', { pid: processToKill.value.pid });
+        // Optimistic update or refresh
+        fetchPorts();
+    } catch (e) {
+        console.error("Failed to kill process", e);
+    } finally {
+        showConfirmation.value = false;
+        processToKill.value = null;
+    }
+};
 
 const filteredPorts = computed(() => {
   if (!searchQuery.value) return ports.value;
@@ -80,7 +106,8 @@ onMounted(() => {
         <div class="col-span-2">Port</div>
         <div class="col-span-3">Address</div>
         <div class="col-span-2">PID</div>
-        <div class="col-span-3">Process</div>
+        <div class="col-span-2">Process</div>
+        <div class="col-span-1 text-right">Action</div>
     </div>
 
     <!-- Scrollable Content -->
@@ -101,10 +128,22 @@ onMounted(() => {
           <div class="col-span-2 text-white/50 font-mono text-xs">{{ port.pid || '-' }}</div>
           
           <!-- Process Name -->
-          <div class="col-span-3 font-medium text-white/90 truncate flex items-center gap-2" :title="port.process_name">
+          <div class="col-span-2 font-medium text-white/90 truncate flex items-center gap-2" :title="port.process_name">
              <div class="w-1.5 h-1.5 rounded-full bg-green-500" v-if="port.pid"></div>
              <div class="w-1.5 h-1.5 rounded-full bg-gray-600" v-else></div>
              {{ port.process_name }}
+          </div>
+
+          <!-- Action -->
+          <div class="col-span-1 flex justify-end">
+              <button 
+                v-if="port.pid"
+                @click="confirmKill(port)"
+                class="p-1.5 rounded hover:bg-red-500/10 text-gray-500 hover:text-red-500 transition-colors"
+                title="Kill Associated Process"
+              >
+                  <Skull class="w-4 h-4" />
+              </button>
           </div>
       </div>
        
@@ -113,6 +152,15 @@ onMounted(() => {
         <p>No ports found</p>
       </div>
     </div>
+
+    <ConfirmationModal
+        :is-open="showConfirmation"
+        title="Kill Process?"
+        :message="`Are you sure you want to terminate ${processToKill?.process_name} (PID: ${processToKill?.pid})? This will close all its network connections.`"
+        confirm-text="Kill Process"
+        @confirm="executeKill"
+        @cancel="showConfirmation = false"
+    />
   </div>
 </template>
 
