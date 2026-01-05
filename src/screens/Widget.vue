@@ -1,15 +1,22 @@
 <script setup lang="ts">
-import { ArrowDown, ArrowUp } from 'lucide-vue-next';
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   stats: any;
   totalCpu: number;
   memoryUsed: number;
   memoryTotal: number;
-}>();
+}>(), {
+    stats: () => ({
+        gpu_usage: undefined,
+        network_up: 0,
+        network_down: 0,
+        disk_read: 0,
+        disk_write: 0
+    })
+});
 
 const formatSpeed = (bytes: number) => {
-  if (bytes === 0) return '0 B/s';
+  if (!bytes) return '0 B/s';
   const k = 1024;
   const sizes = ['B/s', 'KB/s', 'MB/s', 'GB/s'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
@@ -68,7 +75,7 @@ const formatBytes = (bytes: number) => {
     </div>
 
     <!-- GPU Section (Conditional) -->
-    <div v-if="props.stats.gpu_usage !== undefined" class="glass-panel rounded-xl p-3 relative overflow-hidden group">
+    <div v-if="props.stats?.gpu_usage != null" class="glass-panel rounded-xl p-3 relative overflow-hidden group">
       <div class="flex justify-between items-center mb-1 relative z-10">
         <span class="text-xs font-bold text-gray-400 tracking-wider">GPU LOAD</span>
         <span class="text-lg font-bold text-neon-gpu neon-text-gpu">{{ props.stats.gpu_usage.toFixed(0) }}%</span>
@@ -85,25 +92,47 @@ const formatBytes = (bytes: number) => {
       </div>
     </div>
 
-    <div class="flex-grow"></div>
-
-    <!-- Network Footer -->
-    <div class="grid grid-cols-2 gap-2 mt-auto">
-      <!-- Network -->
-      <div class="glass-panel rounded-lg p-2 col-span-2 space-y-2">
-        <div class="flex justify-between items-center text-xs text-gray-400">
-          <div class="flex items-center gap-1">
-            <ArrowUp class="w-3 h-3 text-neon-alert" />
-            <span>Upload</span>
-          </div>
-          <span class="font-mono text-white">{{ formatSpeed(props.stats.network_up || 0) }}</span>
+    <!-- Disk Section -->
+    <div class="glass-panel rounded-xl p-3 relative overflow-hidden group">
+      <div class="flex justify-between items-center mb-1 relative z-10">
+        <span class="text-xs font-bold text-gray-400 tracking-wider">DISK I/O</span>
+        <div class="flex gap-2 text-[10px] font-mono">
+            <span class="text-orange-300">R: {{ formatSpeed(props.stats.disk_read || 0) }}</span>
+            <span class="text-blue-300">W: {{ formatSpeed(props.stats.disk_write || 0) }}</span>
         </div>
-        <div class="flex justify-between items-center text-xs text-gray-400">
-          <div class="flex items-center gap-1">
-            <ArrowDown class="w-3 h-3 text-neon-ram" />
-            <span>Download</span>
-          </div>
-          <span class="font-mono text-white">{{ formatSpeed(props.stats.network_down || 0) }}</span>
+      </div>
+      <!-- Simulated Wave Chart for Disk -->
+      <div class="h-8 w-full bg-gray-900/50 rounded flex items-end overflow-hidden relative">
+        <div class="absolute inset-0 opacity-20 bg-orange-500/10"></div>
+        <div class="w-full h-full flex items-end gap-0.5 px-1 pb-1">
+           <!-- Visualize Read (Orange) and Write (Blue) mixed? Or just activity? Just activity based on sum? -->
+           <div v-for="i in 20" :key="i" 
+                class="flex-1 bg-orange-400 rounded-t-sm transition-all duration-300"
+                :style="{ height: `${Math.min(((props.stats.disk_read + props.stats.disk_write) / 1024 / 1024) * 10, 100) * Math.random()}%`, opacity: 0.5 + (i/40) }">
+           </div>
+        </div>
+      </div>
+    </div>
+
+
+
+    <!-- Network Graph Section -->
+    <div class="glass-panel rounded-xl p-3 relative overflow-hidden group">
+        <div class="flex justify-between items-center mb-1 relative z-10">
+            <span class="text-xs font-bold text-gray-400 tracking-wider">NETWORK</span>
+             <div class="flex gap-2 text-[10px] font-mono">
+                <span class="text-neon-alert">Up: {{ formatSpeed(props.stats.network_up || 0) }}</span>
+                <span class="text-neon-ram">Down: {{ formatSpeed(props.stats.network_down || 0) }}</span>
+            </div>
+        </div>
+         <!-- Simulated Wave Chart for Network -->
+      <div class="h-8 w-full bg-gray-900/50 rounded flex items-end overflow-hidden relative">
+        <div class="absolute inset-0 opacity-20 bg-blue-500/10"></div>
+        <div class="w-full h-full flex items-end gap-0.5 px-1 pb-1">
+           <div v-for="i in 20" :key="i" 
+                class="flex-1 bg-blue-400 rounded-t-sm transition-all duration-300"
+                :style="{ height: `${Math.min(((props.stats.network_down + props.stats.network_up) / 1024 / 1024) * 5, 100) * Math.random()}%`, opacity: 0.5 + (i/40) }">
+           </div>
         </div>
       </div>
     </div>
@@ -115,6 +144,7 @@ const formatBytes = (bytes: number) => {
   background: rgba(17, 24, 39, 0.7);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
+  padding: 1rem;
 }
 
 .glass-panel {

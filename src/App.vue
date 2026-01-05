@@ -12,10 +12,19 @@ import { isWindows } from "./utils/platform";
 
 // State
 const currentView = ref<'widget' | 'process' | 'settings'>('process'); // Default to process manager for now
-const stats = ref({
+const stats = ref<{
+  cpu_usage: number;
+  memory_used: number;
+  memory_total: number;
+  network_up: number;
+  network_down: number;
+  top_processes: any[];
+}>({
   cpu_usage: 0,
   memory_used: 0,
   memory_total: 0,
+  network_up: 0,
+  network_down: 0,
   top_processes: []
 });
 
@@ -101,6 +110,8 @@ const killProcess = async (pid: number) => {
           :totalCpu="stats.cpu_usage"
           :memoryUsed="stats.memory_used"
           :memoryTotal="stats.memory_total"
+          :networkUp="stats.network_up"
+          :networkDown="stats.network_down"
           @kill-process="killProcess"
         />
       </Transition>

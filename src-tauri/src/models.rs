@@ -8,6 +8,10 @@ pub struct ProcessInfo {
     pub total_cpu_usage: f32,
     pub memory_usage: u64,
     pub total_memory_usage: u64,
+    pub disk_read: u64,
+    pub disk_write: u64,
+    pub total_disk_read: u64,
+    pub total_disk_write: u64,
     pub thread_count: u64,
     pub children: Vec<ProcessInfo>,
 }
@@ -19,6 +23,9 @@ pub struct SystemStats {
     pub memory_total: u64,
     pub network_up: u64,
     pub network_down: u64,
+    pub disk_read: u64,
+    pub disk_write: u64,
+    pub gpu_usage: Option<f32>, // Keeping option open
     pub top_processes: Vec<ProcessInfo>,
 }
 

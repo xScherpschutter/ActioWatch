@@ -11,6 +11,10 @@ interface ProcessInfo {
   total_cpu_usage: number;
   memory_usage: number;
   total_memory_usage: number;
+  disk_read: number;
+  disk_write: number;
+  total_disk_read: number;
+  total_disk_write: number;
   thread_count: number;
   children: ProcessInfo[];
 }
@@ -21,12 +25,17 @@ interface TreeNode extends ProcessInfo {
   hasChildren: boolean;
 }
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   processes: ProcessInfo[];
   totalCpu: number;
   memoryUsed: number;
   memoryTotal: number;
-}>();
+  networkUp?: number;
+  networkDown?: number;
+}>(), {
+  networkUp: 0,
+  networkDown: 0,
+});
 
 const emit = defineEmits(['kill-process']);
 
@@ -73,21 +82,6 @@ const openDetails = (pid: number) => {
 
 onMounted(async () => {
   isWindowsPlatform.value = await isWindows();
-});
-
-const totalThreads = computed(() => {
-  if (isWindowsPlatform.value) return 0;
-  
-  // Need to traverse tree to count total threads if props.processes is just roots
-  let count = 0;
-  const traverse = (nodes: ProcessInfo[]) => {
-    for (const node of nodes) {
-      count += node.thread_count;
-      traverse(node.children);
-    }
-  };
-  traverse(props.processes);
-  return count;
 });
 
 // Helper to calculate total count for footer
@@ -183,8 +177,27 @@ const getUsageColor = (usage: number) => {
 
 const formatBytes = (bytes: number) => {
   const gb = bytes / (1024 * 1024 * 1024);
-  return `${gb.toFixed(1)} GB`;
+  if (gb >= 1) return `${gb.toFixed(1)} GB`;
+  const mb = bytes / (1024 * 1024);
+  return `${mb.toFixed(1)} MB`;
 };
+
+const formatDiskBytes = (bytes: number) => {
+    if (bytes === 0) return '0 B/s';
+    const kbs = bytes / 1024;
+    if (kbs < 1024) return `${kbs.toFixed(1)} KB/s`;
+    const mbs = kbs / 1024;
+    return `${mbs.toFixed(1)} MB/s`;
+}
+
+const formatNetworkBytes = (bytes: number) => {
+    if (bytes === 0) return '0 B';
+    const kbs = bytes / 1024;
+    if (kbs < 1024) return `${kbs.toFixed(1)} KB`;
+    const mbs = kbs / 1024;
+    return `${mbs.toFixed(1)} MB`;
+}
+
 </script>
 
 <template>
@@ -241,12 +254,20 @@ const formatBytes = (bytes: number) => {
 
     <!-- Table Header -->
     <div class="grid grid-cols-12 gap-4 px-6 py-2 text-xs font-bold text-white/80 uppercase tracking-wider border-b border-white/10">
-      <!-- Adjust column spans based on platform -->
-      <div :class="isWindowsPlatform ? 'col-span-5' : 'col-span-4'">Process Name</div>
+      <!-- Name (3 cols) -->
+      <div class="col-span-3">Process Name</div>
+      <!-- PID (1 col) -->
       <div class="col-span-1">PID</div>
-      <div v-if="!isWindowsPlatform" class="col-span-1">Threads</div>
+      <!-- CPU (2 cols) -> Reduced to 1.5? No, keep 2 -->
       <div class="col-span-2">CPU %</div>
+      <!-- Memory (2 cols) -->
       <div class="col-span-2">Memory</div>
+      <!-- Disk (2 cols) split -->
+      <div class="col-span-2 flex justify-between">
+          <span>Disk R</span>
+          <span>Disk W</span>
+      </div>
+      <!-- Action (2 cols) -->
       <div class="col-span-2 text-right">Action</div>
     </div>
 
@@ -256,7 +277,7 @@ const formatBytes = (bytes: number) => {
            class="grid grid-cols-12 gap-4 px-4 py-2 items-center hover:bg-white/5 rounded-lg transition-colors group border-b border-white/5 last:border-0">
         
         <!-- Name (with Indentation for Tree) -->
-        <div :class="isWindowsPlatform ? 'col-span-5' : 'col-span-4'" class="flex items-center gap-2 overflow-hidden">
+        <div class="col-span-3 flex items-center gap-2 overflow-hidden">
            <!-- Indentation Spacer -->
            <div :style="{ width: `${process.level * 20}px` }" class="flex-shrink-0 transition-all duration-300"></div>
 
@@ -283,11 +304,6 @@ const formatBytes = (bytes: number) => {
         <!-- PID -->
         <div class="col-span-1 font-mono text-xs text-white/60">
           {{ process.pid }}
-        </div>
-
-        <!-- Threads (Only if not Windows) -->
-        <div v-if="!isWindowsPlatform" class="col-span-1 font-mono text-xs text-white/60">
-          {{ process.thread_count }}
         </div>
 
         <!-- CPU -->
@@ -323,6 +339,12 @@ const formatBytes = (bytes: number) => {
           </div>
         </div>
 
+        <!-- Disk I/O -->
+        <div class="col-span-2 flex justify-between font-mono text-[10px] text-white/60">
+            <span class="text-orange-300">{{ formatDiskBytes(process.total_disk_read || 0) }}</span>
+            <span class="text-blue-300">{{ formatDiskBytes(process.total_disk_write || 0) }}</span>
+        </div>
+
         <!-- Action -->
         <div class="col-span-2 flex justify-end gap-2">
            <button @click="openDetails(process.pid)" 
@@ -353,17 +375,25 @@ const formatBytes = (bytes: number) => {
           <span class="text-[10px] text-white/60 uppercase font-bold">Total Processes</span>
           <span class="text-lg font-mono text-white">{{ totalProcesses }}</span>
         </div>
-        <div v-if="!isWindowsPlatform" class="flex flex-col">
-          <span class="text-[10px] text-white/60 font-bold uppercase tracking-wider">Threads</span>
-          <span class="text-lg font-mono font-bold text-white">{{ totalThreads }}</span>
-        </div>
       </div>
 
       <div class="flex gap-8 items-center">
+         <!-- Network -->
+         <div class="flex gap-4 border-r border-white/10 pr-4">
+             <div class="flex flex-col items-end">
+                 <span class="text-[9px] text-gray-400 uppercase tracking-widest">Down</span>
+                 <span class="text-xs font-mono text-neon-cpu">{{ formatNetworkBytes(networkDown) }}/s</span>
+             </div>
+             <div class="flex flex-col items-end">
+                 <span class="text-[9px] text-gray-400 uppercase tracking-widest">Up</span>
+                 <span class="text-xs font-mono text-blue-400">{{ formatNetworkBytes(networkUp) }}/s</span>
+             </div>
+         </div>
+
         <!-- Total CPU -->
-        <div class="w-48">
+        <div class="w-32">
           <div class="flex justify-between text-xs mb-1">
-             <span class="text-white/70">Total CPU Load</span>
+             <span class="text-white/70">CPU</span>
              <span class="text-neon-cpu font-bold">{{ totalCpu.toFixed(1) }}%</span>
           </div>
           <div class="h-1.5 bg-gray-700 rounded-full overflow-hidden">
@@ -373,10 +403,10 @@ const formatBytes = (bytes: number) => {
         </div>
 
         <!-- Memory -->
-        <div class="w-48">
+        <div class="w-32">
           <div class="flex justify-between text-xs mb-1">
-             <span class="text-white/70">Memory</span>
-             <span class="text-neon-ram font-bold">{{ formatBytes(memoryUsed) }} / {{ formatBytes(memoryTotal) }}</span>
+             <span class="text-white/70">Mem</span>
+             <span class="text-neon-ram font-bold">{{ formatBytes(memoryUsed) }}</span>
           </div>
           <div class="h-1.5 bg-gray-700 rounded-full overflow-hidden">
             <div class="h-full bg-neon-ram shadow-[0_0_10px_rgba(66,255,0,0.5)] transition-all duration-300"

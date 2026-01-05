@@ -140,7 +140,13 @@ pub fn run() {
                     // Refresh CPU, Memory, Processes and Networks
                     sys.refresh_cpu();
                     sys.refresh_memory();
-                    sys.refresh_processes();
+                    // Refresh processes including Disk Usage
+                    sys.refresh_processes_specifics(
+                        sysinfo::ProcessRefreshKind::new()
+                            .with_cpu()
+                            .with_memory()
+                            .with_disk_usage(),
+                    );
                     networks.refresh();
 
                     // Calculate global CPU usage
@@ -151,10 +157,19 @@ pub fn run() {
                     // Calculate global Network usage
                     let mut network_up = 0;
                     let mut network_down = 0;
-                    for (_interface_name, data) in &networks {
+                    for (_name, data) in &networks {
                         network_up += data.transmitted();
                         network_down += data.received();
+                        // Optional: verbose logging to debug specific interfaces
+                        // println!("Interface {}: Up: {}, Down: {}", name, data.transmitted(), data.received());
                     }
+
+                    // println!(
+                    //     "Total Network: Up: {}, Down: {}, Interfaces: {}",
+                    //     network_up,
+                    //     network_down,
+                    //     networks.len()
+                    // );
 
                     // Create a map of PID -> Children PIDs
                     let mut children_map: std::collections::HashMap<u32, Vec<u32>> =
@@ -172,27 +187,33 @@ pub fn run() {
                         }
                     }
 
-                    // Recursive function to build the tree
-                    // We need to pass 'sys' to access process details
+                    // Helper to build process node with aggregation
                     fn build_process_node(
                         pid: u32,
                         sys: &sysinfo::System,
                         children_map: &std::collections::HashMap<u32, Vec<u32>>,
                     ) -> Option<ProcessInfo> {
                         if let Some(process) = sys.process(Pid::from(pid as usize)) {
+                            let disk_usage = process.disk_usage();
                             let mut node = ProcessInfo {
                                 pid,
                                 name: process.name().to_string(),
                                 cpu_usage: process.cpu_usage(),
-                                total_cpu_usage: process.cpu_usage(), // Init with self
+                                total_cpu_usage: process.cpu_usage(),
                                 memory_usage: process.memory(),
-                                total_memory_usage: process.memory(), // Init with self
+                                total_memory_usage: process.memory(),
+                                disk_read: disk_usage.read_bytes,
+                                disk_write: disk_usage.written_bytes,
+                                total_disk_read: disk_usage.read_bytes,
+                                total_disk_write: disk_usage.written_bytes,
                                 thread_count: process.tasks().map(|t| t.len() as u64).unwrap_or(0),
                                 children: Vec::new(),
                             };
 
                             let mut children_total_cpu = 0.0;
                             let mut children_total_mem = 0;
+                            let mut children_total_disk_read = 0;
+                            let mut children_total_disk_write = 0;
 
                             if let Some(children_pids) = children_map.get(&pid) {
                                 for &child_pid in children_pids {
@@ -201,16 +222,20 @@ pub fn run() {
                                     {
                                         children_total_cpu += child_node.total_cpu_usage;
                                         children_total_mem += child_node.total_memory_usage;
+                                        children_total_disk_read += child_node.total_disk_read;
+                                        children_total_disk_write += child_node.total_disk_write;
                                         node.children.push(child_node);
                                     }
                                 }
                             }
 
-                            // Update totals with children sums
+                            // Update totals
                             node.total_cpu_usage += children_total_cpu;
                             node.total_memory_usage += children_total_mem;
+                            node.total_disk_read += children_total_disk_read;
+                            node.total_disk_write += children_total_disk_write;
 
-                            // Sort children by Total CPU usage to keep most interesting branches on top
+                            // Sort children by Total CPU usage
                             node.children.sort_by(|a, b| {
                                 b.total_cpu_usage
                                     .partial_cmp(&a.total_cpu_usage)
@@ -223,7 +248,7 @@ pub fn run() {
                         }
                     }
 
-                    // Identify roots: Processes whose parents are NOT in the current list
+                    // Identify roots
                     let roots: Vec<u32> = sys
                         .processes()
                         .iter()
@@ -258,12 +283,23 @@ pub fn run() {
                             .unwrap_or(std::cmp::Ordering::Equal)
                     });
 
+                    // Aggregate global disk usage from processes
+                    let mut total_disk_read = 0;
+                    let mut total_disk_write = 0;
+                    for p in &processes {
+                        total_disk_read += p.total_disk_read;
+                        total_disk_write += p.total_disk_write;
+                    }
+
                     let stats = SystemStats {
                         cpu_usage: global_cpu,
                         memory_used,
                         memory_total,
                         network_up,
                         network_down,
+                        disk_read: total_disk_read,
+                        disk_write: total_disk_write,
+                        gpu_usage: None,
                         top_processes: processes,
                     };
 
@@ -315,10 +351,7 @@ pub fn run() {
                     }
 
                     // Alert for high memory usage
-                    let memory_used = sys.used_memory() as f64;
-                    let total_memory = sys.total_memory() as f64;
-
-                    if memory_used > total_memory * 0.90 {
+                    if memory_used as f64 > memory_total as f64 * 0.90 {
                         high_memory_count += 1;
                     } else {
                         high_memory_count = 0;
@@ -331,7 +364,7 @@ pub fn run() {
                             .title("Memory Alert")
                             .body(&format!(
                                 "System memory usage is critically high ({:.1}%)",
-                                memory_used / total_memory * 100.0
+                                memory_used as f64 / memory_total as f64 * 100.0
                             ))
                             .show();
 
