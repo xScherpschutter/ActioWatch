@@ -86,7 +86,7 @@ const toggleView = () => {
 </script>
 
 <template>
-  <div class="h-screen w-screen bg-gray-900 text-white overflow-hidden flex flex-col relative">
+  <div class="h-screen w-screen bg-transparent text-white overflow-hidden flex flex-col relative">
     
     <!-- Custom Title Bar (Windows only) -->
     <TitleBar 

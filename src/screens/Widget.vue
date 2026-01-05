@@ -1,4 +1,3 @@
-```vue
 <script setup lang="ts">
 import { ArrowDown, ArrowUp } from 'lucide-vue-next';
 
@@ -25,7 +24,7 @@ const formatBytes = (bytes: number) => {
 </script>
 
 <template>
-  <div class="h-full flex flex-col p-4 space-y-4 select-none">
+  <div class="h-full flex flex-col p-4 space-y-4 select-none glass-container">
     <!-- CPU Section -->
     <div class="glass-panel rounded-xl p-3 relative overflow-hidden group">
       <div class="flex justify-between items-center mb-1 relative z-10">
@@ -110,4 +109,18 @@ const formatBytes = (bytes: number) => {
     </div>
   </div>
 </template>
-```
+
+<style scoped>
+.glass-container {
+  background: rgba(17, 24, 39, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.glass-panel {
+  background: rgba(31, 41, 55, 0.5);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+</style>

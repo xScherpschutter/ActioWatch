@@ -37,7 +37,8 @@ const toggleAutostart = async () => {
 </script>
 
 <template>
-  <div class="settings-container">
+  <div class="glass-container h-full">
+    <div class="settings-container">
     <div class="settings-header">
       <Settings :size="24" class="header-icon" />
       <h2>Settings</h2>
@@ -61,10 +62,17 @@ const toggleAutostart = async () => {
         </div>
       </div>
     </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
+.glass-container {
+  background: rgba(17, 24, 39, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
 .settings-container {
   padding: 2rem;
   max-width: 800px;

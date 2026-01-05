@@ -47,7 +47,7 @@ const formatBytes = (bytes: number) => {
 </script>
 
 <template>
-  <div class="h-full flex flex-col bg-gray-900/90 text-white select-none">
+  <div class="h-full flex flex-col glass-container text-white select-none">
 
     <!-- Toolbar -->
     <div class="p-4 flex gap-3">
@@ -57,13 +57,13 @@ const formatBytes = (bytes: number) => {
           v-model="searchQuery"
           type="text" 
           placeholder="Filter processes by name or PID..." 
-          class="w-full bg-gray-800/50 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-neon-cpu/50 focus:ring-1 focus:ring-neon-cpu/50 transition-all placeholder-gray-600"
+          class="w-full glass-input border border-white/10 rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-neon-cpu/50 focus:ring-1 focus:ring-neon-cpu/50 transition-all placeholder-gray-600"
         />
       </div>
     </div>
 
     <!-- Table Header -->
-    <div class="grid grid-cols-12 gap-4 px-6 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-white/5">
+    <div class="grid grid-cols-12 gap-4 px-6 py-2 text-xs font-bold text-white/80 uppercase tracking-wider border-b border-white/10">
       <div class="col-span-4">Process Name</div>
       <div class="col-span-1">PID</div>
       <div class="col-span-1">Threads</div>
@@ -79,26 +79,26 @@ const formatBytes = (bytes: number) => {
         
         <!-- Name -->
         <div class="col-span-4 flex items-center gap-3">
-          <div class="w-8 h-8 rounded bg-gray-700/50 flex items-center justify-center text-gray-400">
+          <div class="w-8 h-8 rounded bg-white/10 flex items-center justify-center text-cyan-400">
             <Box class="w-4 h-4" />
           </div>
-          <span class="font-medium text-sm text-gray-200 group-hover:text-white truncate">{{ process.name }}</span>
+          <span class="font-medium text-sm text-white/90 group-hover:text-white truncate">{{ process.name }}</span>
         </div>
 
         <!-- PID -->
-        <div class="col-span-1 font-mono text-xs text-gray-500">
+        <div class="col-span-1 font-mono text-xs text-white/60">
           {{ process.pid }}
         </div>
 
         <!-- Threads -->
-        <div class="col-span-1 font-mono text-xs text-gray-500">
+        <div class="col-span-1 font-mono text-xs text-white/60">
           {{ process.thread_count }}
         </div>
 
         <!-- CPU -->
         <div class="col-span-2">
           <div class="flex flex-col gap-1">
-            <div class="flex justify-between text-[10px] text-gray-400 font-mono">
+            <div class="flex justify-between text-[10px] text-white/70 font-mono">
               <span>{{ process.cpu_usage.toFixed(1) }}%</span>
             </div>
             <div class="h-1.5 bg-gray-700/50 rounded-full overflow-hidden">
@@ -114,7 +114,7 @@ const formatBytes = (bytes: number) => {
         <!-- Memory -->
         <div class="col-span-2">
           <div class="flex flex-col gap-1">
-            <div class="flex justify-between text-[10px] text-gray-400 font-mono">
+            <div class="flex justify-between text-[10px] text-white/70 font-mono">
               <span>{{ formatBytes(process.memory_usage) }}</span>
             </div>
             <div class="h-1.5 bg-gray-700/50 rounded-full overflow-hidden">
@@ -137,14 +137,14 @@ const formatBytes = (bytes: number) => {
     </div>
 
     <!-- Footer Stats -->
-    <div class="h-16 bg-gray-800/40 border-t border-white/5 backdrop-blur-md px-6 flex items-center justify-between">
+    <div class="h-16 glass-footer border-t border-white/5 px-6 flex items-center justify-between">
       <div class="flex gap-8">
         <div class="flex flex-col">
-          <span class="text-[10px] text-gray-500 uppercase font-bold">Total Processes</span>
+          <span class="text-[10px] text-white/60 uppercase font-bold">Total Processes</span>
           <span class="text-lg font-mono text-white">{{ processes.length }}</span>
         </div>
         <div class="flex flex-col">
-          <span class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Threads</span>
+          <span class="text-[10px] text-white/60 font-bold uppercase tracking-wider">Threads</span>
           <span class="text-lg font-mono font-bold text-white">{{ totalThreads }}</span>
         </div>
       </div>
@@ -153,7 +153,7 @@ const formatBytes = (bytes: number) => {
         <!-- Total CPU -->
         <div class="w-48">
           <div class="flex justify-between text-xs mb-1">
-             <span class="text-gray-400">Total CPU Load</span>
+             <span class="text-white/70">Total CPU Load</span>
              <span class="text-neon-cpu font-bold">{{ totalCpu.toFixed(1) }}%</span>
           </div>
           <div class="h-1.5 bg-gray-700 rounded-full overflow-hidden">
@@ -165,7 +165,7 @@ const formatBytes = (bytes: number) => {
         <!-- Memory -->
         <div class="w-48">
           <div class="flex justify-between text-xs mb-1">
-             <span class="text-gray-400">Memory</span>
+             <span class="text-white/70">Memory</span>
              <span class="text-neon-ram font-bold">{{ formatBytes(memoryUsed) }} / {{ formatBytes(memoryTotal) }}</span>
           </div>
           <div class="h-1.5 bg-gray-700 rounded-full overflow-hidden">
@@ -177,3 +177,41 @@ const formatBytes = (bytes: number) => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.glass-container {
+  background: rgba(17, 24, 39, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.glass-input {
+  background: rgba(31, 41, 55, 0.5);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.glass-footer {
+  background: rgba(31, 41, 55, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(6, 182, 212, 0.3);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(6, 182, 212, 0.5);
+}
+</style>
