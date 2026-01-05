@@ -17,6 +17,14 @@ pub struct ProcessInfo {
 }
 
 #[derive(Serialize, Clone)]
+pub struct ComponentInfo {
+    pub label: String,
+    pub temperature: f32,
+    pub max_temperature: f32,
+    pub critical_temperature: Option<f32>,
+}
+
+#[derive(Serialize, Clone)]
 pub struct SystemStats {
     pub cpu_usage: f32,
     pub memory_used: u64,
@@ -25,7 +33,8 @@ pub struct SystemStats {
     pub network_down: u64,
     pub disk_read: u64,
     pub disk_write: u64,
-    pub gpu_usage: Option<f32>, // Keeping option open
+    pub gpu_usage: Option<f32>,         // Keeping option open
+    pub components: Vec<ComponentInfo>, // Sensor data
     pub top_processes: Vec<ProcessInfo>,
 }
 

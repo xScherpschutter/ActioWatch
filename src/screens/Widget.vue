@@ -136,6 +136,21 @@ const formatBytes = (bytes: number) => {
         </div>
       </div>
     </div>
+
+    <!-- Temperature Section -->
+    <div v-if="props.stats?.components && props.stats.components.length > 0" class="glass-panel rounded-xl p-3 relative overflow-hidden group">
+      <div class="flex justify-between items-center mb-1 relative z-10">
+        <span class="text-xs font-bold text-gray-400 tracking-wider">TEMPERATURES</span>
+      </div>
+      <div class="flex flex-col gap-1">
+         <div v-for="comp in props.stats.components.slice(0, 3)" :key="comp.label" class="flex justify-between text-xs items-center">
+             <span class="text-gray-400 truncate w-24" :title="comp.label">{{ comp.label }}</span>
+             <span class="font-mono font-bold" :class="comp.temperature > 80 ? 'text-orange-500' : 'text-neon-cpu'">
+                 {{ comp.temperature.toFixed(0) }}°C
+             </span>
+         </div>
+      </div>
+    </div>
   </div>
 </template>
 

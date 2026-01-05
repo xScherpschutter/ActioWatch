@@ -6,19 +6,21 @@ import Widget from "./screens/Widget.vue";
 import ProcessManager from "./screens/ProcessManager.vue";
 import Settings from "./screens/Settings.vue";
 import PortManager from "./screens/PortManager.vue";
+import HardwareMonitor from "./screens/HardwareMonitor.vue";
 import ToastNotification from "./components/ToastNotification.vue";
 import TitleBar from "./components/TitleBar.vue";
 import { isWindows } from "./utils/platform";
 
 
 // State
-const currentView = ref<'widget' | 'process' | 'settings' | 'ports'>('process'); // Default to process manager for now
+const currentView = ref<'widget' | 'process' | 'settings' | 'ports' | 'hardware'>('process'); // Default to process manager for now
 const stats = ref<{
   cpu_usage: number;
   memory_used: number;
   memory_total: number;
   network_up: number;
   network_down: number;
+  components?: any[];
   top_processes: any[];
 }>({
   cpu_usage: 0,
@@ -105,7 +107,7 @@ const killProcess = async (pid: number) => {
     <div :class="['flex-grow overflow-hidden', showTitleBar ? 'mt-8' : '']">
       <Transition mode="out-in" enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0 scale-95" enter-to-class="opacity-100 scale-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100 scale-100" leave-to-class="opacity-0 scale-95">
         <component 
-          :is="currentView === 'widget' ? Widget : currentView === 'settings' ? Settings : currentView === 'ports' ? PortManager : ProcessManager"
+          :is="currentView === 'widget' ? Widget : currentView === 'settings' ? Settings : currentView === 'ports' ? PortManager : currentView === 'hardware' ? HardwareMonitor : ProcessManager"
           :stats="stats"
           :processes="stats.top_processes"
           :totalCpu="stats.cpu_usage"
@@ -113,6 +115,7 @@ const killProcess = async (pid: number) => {
           :memoryTotal="stats.memory_total"
           :networkUp="stats.network_up"
           :networkDown="stats.network_down"
+          :components="stats.components"
           @kill-process="killProcess"
         />
       </Transition>

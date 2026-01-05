@@ -1,9 +1,9 @@
 mod models;
 
-use models::{ProcessInfo, SystemStats};
+use models::{ComponentInfo, ProcessInfo, SystemStats};
 use std::collections::HashSet;
 use std::time::Duration;
-use sysinfo::{Networks, Pid, System};
+use sysinfo::{Components, Networks, Pid, System};
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::TrayIconBuilder;
 use tauri::Manager;
@@ -165,6 +165,7 @@ pub fn run() {
             tauri::async_runtime::spawn(async move {
                 let mut sys = System::new_all();
                 let mut networks = Networks::new_with_refreshed_list();
+                let mut components = Components::new_with_refreshed_list();
                 let mut high_cpu_count = 0;
                 let mut high_memory_count = 0;
                 let mut notified_pids = HashSet::new();
@@ -180,7 +181,9 @@ pub fn run() {
                             .with_memory()
                             .with_disk_usage(),
                     );
+
                     networks.refresh();
+                    components.refresh();
 
                     // Calculate global CPU usage
                     let global_cpu = sys.global_cpu_info().cpu_usage();
@@ -333,8 +336,20 @@ pub fn run() {
                         disk_read: total_disk_read,
                         disk_write: total_disk_write,
                         gpu_usage: None,
+                        components: components
+                            .iter()
+                            .map(|c| ComponentInfo {
+                                label: c.label().to_string(),
+                                temperature: c.temperature(),
+                                max_temperature: c.max(),
+                                critical_temperature: c.critical(),
+                            })
+                            .collect(),
                         top_processes: processes,
                     };
+
+                    // Components log
+                    // println!("Components: {:?}", stats.components);
 
                     // Emit stats to frontend
                     if let Err(e) = app_handle.emit("stats-update", &stats) {
