@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { ListTree, LayoutGrid, Settings, Network, Thermometer, Rocket } from 'lucide-vue-next';
+import appLogo from '../assets/favicon.svg';
 
 // Props
 const props = defineProps<{
@@ -45,20 +46,13 @@ appWindow.onResized(async () => {
   <div class="title-bar glass" data-tauri-drag-region>
     <div class="title-bar-content" data-tauri-drag-region>
       <div class="title-bar-title" data-tauri-drag-region>
-        <svg 
+        <img 
+          :src="appLogo" 
           class="app-icon" 
-          width="16" 
-          height="16" 
-          viewBox="0 0 24 24" 
-          fill="none" 
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path 
-            d="M13 2L3 14h8l-1 8 10-12h-8l1-8z" 
-            fill="currentColor" 
-            class="text-cyan-400"
-          />
-        </svg>
+          width="20" 
+          height="20" 
+          alt="ActioWatch"
+        />
         <span>ActioWatch</span>
       </div>
       
