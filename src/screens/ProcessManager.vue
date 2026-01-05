@@ -201,7 +201,13 @@ const formatNetworkBytes = (bytes: number) => {
 </script>
 
 <template>
-  <div class="h-full flex flex-col glass-container text-white select-none">
+  <div class="h-full flex flex-col glass-container text-white select-none pt-5">
+    <!-- Header -->
+      <div class="flex justify-between items-center border-b border-white/5 px-6">
+        <h2 class="text-xl font-bold text-white tracking-wider flex items-center gap-2">
+          PROCESS MANAGER
+        </h2>
+      </div>
 
     <!-- Toolbar -->
     <div class="p-4 flex gap-3 items-center">
