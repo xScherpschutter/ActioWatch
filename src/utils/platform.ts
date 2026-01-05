@@ -30,12 +30,3 @@ export async function isLinux(): Promise<boolean> {
   const platformName = await getPlatform();
   return platformName === 'linux';
 }
-
-/**
- * Check if the current platform is macOS
- * @returns true if running on macOS, false otherwise
- */
-export async function isMacOS(): Promise<boolean> {
-  const platformName = await getPlatform();
-  return platformName === 'macos';
-}
