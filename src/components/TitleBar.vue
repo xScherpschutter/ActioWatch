@@ -1,6 +1,17 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { ListTree, LayoutGrid, Settings } from 'lucide-vue-next';
+
+// Props
+const props = defineProps<{
+  currentView: 'widget' | 'process' | 'settings';
+}>();
+
+// Emits
+const emit = defineEmits<{
+  viewChange: [view: 'widget' | 'process' | 'settings'];
+}>();
 
 const appWindow = getCurrentWindow();
 const isMaximized = ref(false);
@@ -27,6 +38,7 @@ const closeWindow = async () => {
 appWindow.onResized(async () => {
   isMaximized.value = await appWindow.isMaximized();
 });
+
 </script>
 
 <template>
@@ -48,6 +60,34 @@ appWindow.onResized(async () => {
           />
         </svg>
         <span>ActioWatch</span>
+      </div>
+      
+      <!-- Navigation Buttons -->
+      <div class="title-bar-navigation" data-tauri-drag-region>
+        <button 
+          class="nav-btn" 
+          :class="{ active: props.currentView === 'process' }"
+          @click="emit('viewChange', 'process')"
+          title="Process Manager"
+        >
+          <ListTree :size="16" />
+        </button>
+        <button 
+          class="nav-btn" 
+          :class="{ active: props.currentView === 'widget' }"
+          @click="emit('viewChange', 'widget')"
+          title="Widget"
+        >
+          <LayoutGrid :size="16" />
+        </button>
+        <button 
+          class="nav-btn" 
+          :class="{ active: props.currentView === 'settings' }"
+          @click="emit('viewChange', 'settings')"
+          title="Settings"
+        >
+          <Settings :size="16" />
+        </button>
       </div>
       
       <div class="title-bar-controls">
@@ -123,10 +163,49 @@ appWindow.onResized(async () => {
   font-weight: 500;
   color: rgba(255, 255, 255, 0.9);
   padding-left: 4px;
+  min-width: 150px;
 }
 
 .app-icon {
   filter: drop-shadow(0 0 4px rgba(0, 209, 255, 0.5));
+}
+
+/* Navigation */
+.title-bar-navigation {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  justify-content: center;
+  padding: 0 16px;
+}
+
+.nav-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.nav-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.9);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.nav-btn.active {
+  background: rgba(6, 182, 212, 0.2);
+  color: #06b6d4;
+  border-color: rgba(6, 182, 212, 0.3);
+  box-shadow: 0 0 8px rgba(6, 182, 212, 0.2);
 }
 
 .title-bar-controls {
