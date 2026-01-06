@@ -34,8 +34,8 @@ pub fn create_tray<R: Runtime>(app: &mut App<R>) -> Result<tauri::tray::TrayIcon
             "widget" => {
                 if let Some(window) = app.get_webview_window("main") {
                     let _ = window.set_size(Size::Logical(LogicalSize {
-                        width: 320.0,
-                        height: 480.0,
+                        width: 380.0,
+                        height: 540.0,
                     }));
                     let _ = window.emit("view-change", "widget");
                     let _ = window.show();
