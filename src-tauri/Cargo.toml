@@ -37,4 +37,5 @@ winreg = "0.52"
 
 
 [target.'cfg(unix)'.dependencies]
-nix = { version = "0.27", features = ["process", "sched", "user"] }
+nix = { version = "0.26", features = ["process", "sched", "user", "resource"] }
+libc = "0.2"

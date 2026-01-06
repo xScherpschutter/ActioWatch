@@ -174,8 +174,6 @@ pub fn set_process_priority(pid: u32, priority: String) -> Result<bool, String> 
 
     #[cfg(target_os = "linux")]
     {
-        use nix::sys::resource::{setpriority, Priority, Which};
-
         // Map abstract priority levels to nice values (-20 to 19)
         // Lower is higher priority
         let nice_value = match priority.as_str() {
@@ -188,9 +186,19 @@ pub fn set_process_priority(pid: u32, priority: String) -> Result<bool, String> 
             _ => return Err("Invalid priority level".to_string()),
         };
 
-        match setpriority(Which::Process(pid as i32), Some(nice_value)) {
-            Ok(_) => Ok(true),
-            Err(e) => Err(format!("Failed to set priority (may require root): {}", e)),
+        unsafe {
+            // setpriority(which, who, prio)
+            // PRIO_PROCESS is 0
+            let ret = libc::setpriority(0, pid, nice_value);
+            if ret == 0 {
+                Ok(true)
+            } else {
+                let err = std::io::Error::last_os_error();
+                Err(format!(
+                    "Failed to set priority (may require root): {}",
+                    err
+                ))
+            }
         }
     }
 
@@ -241,11 +249,13 @@ pub fn get_process_affinity(pid: u32) -> Result<Vec<u32>, String> {
     {
         use nix::sched::sched_getaffinity;
         use nix::unistd::Pid;
+        use sysinfo::{System, RefreshKind, CpuRefreshKind};
 
         match sched_getaffinity(Pid::from_raw(pid as i32)) {
             Ok(cpuset) => {
                 let mut cpus = Vec::new();
-                for i in 0..sysinfo::System::new().cpus().len() {
+                let s = System::new_with_specifics(RefreshKind::new().with_cpu(CpuRefreshKind::everything()));
+                for i in 0..s.cpus().len() {
                     if cpuset.is_set(i).unwrap_or(false) {
                         cpus.push(i as u32);
                     }
