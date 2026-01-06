@@ -54,8 +54,7 @@ pub fn create_tray<R: Runtime>(app: &mut App<R>) -> Result<tauri::tray::TrayIcon
             _ => {}
         });
 
-    // Set icon explicitly for Windows
-    #[cfg(target_os = "windows")]
+    // Set icon explicitly for all platforms
     let tray_builder = tray_builder.icon(
         app.default_window_icon()
             .expect("Failed to load window icon")
