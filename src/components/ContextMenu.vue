@@ -2,7 +2,7 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import { Activity, Cpu, ChevronsUp, ChevronUp, Minus, ChevronDown, ChevronsDown, X, ChevronRight } from 'lucide-vue-next';
 
-const props = defineProps<{
+defineProps<{
   x: number;
   y: number;
   pid: number;

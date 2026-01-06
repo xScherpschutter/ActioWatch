@@ -2,7 +2,7 @@
 import { ref } from 'vue';
 import { AlertTriangle, XCircle, Fan, Info, ChevronDown, ChevronUp, CheckCircle } from 'lucide-vue-next';
 
-const props = withDefaults(defineProps<{
+withDefaults(defineProps<{
   type: 'warning' | 'alert' | 'success';
   title: string;
   message: string;

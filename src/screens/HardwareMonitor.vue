@@ -8,7 +8,7 @@ interface ComponentInfo {
   critical_temperature: number | null;
 }
 
-const props = withDefaults(defineProps<{
+withDefaults(defineProps<{
   components?: ComponentInfo[];
 }>(), {
   components: () => []
