@@ -63,10 +63,10 @@
 
         <Property Id="INSTALLDIR">
           <!-- First attempt: Search for "InstallDir" -->
-          <RegistrySearch Id="PrevInstallDirWithName" Root="HKCU" Key="Software\actiometa\actiowatch" Name="InstallDir" Type="raw" />
+          <RegistrySearch Id="PrevInstallDirWithName" Root="HKCU" Key="Software\actiometa\ActioWatch" Name="InstallDir" Type="raw" />
 
           <!-- Second attempt: If the first fails, search for the default key value (this is how the nsis installer currently stores the path) -->
-          <RegistrySearch Id="PrevInstallDirNoName" Root="HKCU" Key="Software\actiometa\actiowatch" Type="raw" />
+          <RegistrySearch Id="PrevInstallDirNoName" Root="HKCU" Key="Software\actiometa\ActioWatch" Type="raw" />
         </Property>
 
         <!-- launch app checkbox -->
@@ -98,22 +98,22 @@
         <Directory Id="TARGETDIR" Name="SourceDir">
             <Directory Id="DesktopFolder" Name="Desktop">
                 <Component Id="ApplicationShortcutDesktop" Guid="*">
-                    <Shortcut Id="ApplicationDesktopShortcut" Name="ActioWatch" Description="Runs actiowatch" Target="[!Path]" WorkingDirectory="INSTALLDIR" />
+                    <Shortcut Id="ApplicationDesktopShortcut" Name="ActioWatch" Description="Runs ActioWatch" Target="[!Path]" WorkingDirectory="INSTALLDIR" />
                     <RemoveFolder Id="DesktopFolder" On="uninstall" />
-                    <RegistryValue Root="HKCU" Key="Software\actiometa\actiowatch" Name="Desktop Shortcut" Type="integer" Value="1" KeyPath="yes" />
+                    <RegistryValue Root="HKCU" Key="Software\actiometa\ActioWatch" Name="Desktop Shortcut" Type="integer" Value="1" KeyPath="yes" />
                 </Component>
             </Directory>
             <Directory Id="$(var.PlatformProgramFilesFolder)" Name="PFiles">
-                <Directory Id="INSTALLDIR" Name="actiowatch"/>
+                <Directory Id="INSTALLDIR" Name="ActioWatch"/>
             </Directory>
             <Directory Id="ProgramMenuFolder">
-                <Directory Id="ApplicationProgramsFolder" Name="actiowatch"/>
+                <Directory Id="ApplicationProgramsFolder" Name="ActioWatch"/>
             </Directory>
         </Directory>
 
         <DirectoryRef Id="INSTALLDIR">
             <Component Id="RegistryEntries" Guid="*">
-                <RegistryKey Root="HKCU" Key="Software\actiometa\actiowatch">
+                <RegistryKey Root="HKCU" Key="Software\actiometa\ActioWatch">
                     <RegistryValue Name="InstallDir" Type="string" Value="[INSTALLDIR]" KeyPath="yes" />
                 </RegistryKey>
                 <!-- Change the Root to HKCU for perUser installations -->
@@ -121,12 +121,12 @@
             <Component Id="Path" Guid="f760ae5b-71c8-587a-92e0-a6fa96d7f9d5" Win64="$(var.Win64)">
                 <File Id="Path" Source="..\..\..\..\target\release\ActioWatch.exe" KeyPath="yes" Checksum="yes"/>
 </Component>
-            <Directory Id="I04ce0d935cb14828a6f05cb786d37545" Name="icons"><Component Id="Iecb744ae477b4574919c951706a397ab" Guid="70e1ed9b-5c21-4a65-aea9-81306b4d0a27" Win64="$(var.Win64)" KeyPath="yes"><File Id="PathFile_Iecb744ae477b4574919c951706a397ab" Source="..\..\..\..\icons\icon.png" /></Component></Directory>
+
             <Component Id="CMP_UninstallShortcut" Guid="*">
 
                 <Shortcut Id="UninstallShortcut"
 						  Name="Uninstall ActioWatch"
-						  Description="Uninstalls actiowatch"
+						  Description="Uninstalls ActioWatch"
 						  Target="[System64Folder]msiexec.exe"
 						  Arguments="/x [ProductCode]" />
 
@@ -134,7 +134,7 @@
 							  On="uninstall" />
 
 				<RegistryValue Root="HKCU"
-							   Key="Software\actiometa\actiowatch"
+							   Key="Software\actiometa\ActioWatch"
 							   Name="Uninstaller Shortcut"
 							   Type="integer"
 							   Value="1"
@@ -146,14 +146,14 @@
             <Component Id="ApplicationShortcut" Guid="*">
                 <Shortcut Id="ApplicationStartMenuShortcut"
                     Name="ActioWatch"
-                    Description="Runs actiowatch"
+                    Description="Runs ActioWatch"
                     Target="[!Path]"
                     Icon="ProductIcon"
                     WorkingDirectory="INSTALLDIR">
-                    <ShortcutProperty Key="System.AppUserModel.ID" Value="com.actiometa.actiowatch"/>
+                    <ShortcutProperty Key="System.AppUserModel.ID" Value="com.actiometa.ActioWatch"/>
                 </Shortcut>
                 <RemoveFolder Id="ApplicationProgramsFolder" On="uninstall"/>
-                <RegistryValue Root="HKCU" Key="Software\actiometa\actiowatch" Name="Start Menu Shortcut" Type="integer" Value="1" KeyPath="yes"/>
+                <RegistryValue Root="HKCU" Key="Software\actiometa\ActioWatch" Name="Start Menu Shortcut" Type="integer" Value="1" KeyPath="yes"/>
            </Component>
         </DirectoryRef>
 
@@ -169,7 +169,7 @@
 
             <ComponentRef Id="RegistryEntries"/>
 
-<ComponentRef Id="Iecb744ae477b4574919c951706a397ab"/>
+
 
             <Feature Id="ShortcutsFeature"
                 Title="Shortcuts"
