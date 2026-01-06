@@ -46,11 +46,16 @@ jobs:
         with:
           targets: ${{ matrix.platform == 'ubuntu-22.04' && 'x86_64-unknown-linux-gnu' || 'x86_64-pc-windows-msvc' }}
 
+      - name: Show matrix values (debug)
+        run: |
+          echo "matrix.platform='${{ matrix.platform }}'"
+          echo "runner.os='${{ runner.os }}'"
+
       - name: Install WiX Toolset (Windows)
-        if: matrix.platform == 'windows-latest'
-        uses: crazy-max/ghaction-choco@v3
-        with:
-          args: install wixtoolset
+        if: ${{ matrix.platform == 'windows-latest' }}
+        run: |
+          choco install wixtoolset -y
+          echo "C:\Program Files (x86)\WiX Toolset v3.14\bin" >> $env:GITHUB_PATH
 
       - name: Build
         run: npm run tauri build
