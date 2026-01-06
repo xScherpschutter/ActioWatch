@@ -4,7 +4,10 @@ mod monitor;
 mod tray;
 
 use commands::network::get_open_ports;
-use commands::process::{get_process_details, get_process_modules, kill_process};
+use commands::process::{
+    get_process_affinity, get_process_details, get_process_modules, kill_process,
+    set_process_affinity, set_process_priority,
+};
 use commands::startup::{get_startup_apps, toggle_startup_app};
 use tauri::Manager;
 
@@ -24,7 +27,10 @@ pub fn run() {
             get_process_modules,
             get_open_ports,
             get_startup_apps,
-            toggle_startup_app
+            toggle_startup_app,
+            set_process_priority,
+            get_process_affinity,
+            set_process_affinity
         ])
         .setup(|app| {
             // Create tray icon

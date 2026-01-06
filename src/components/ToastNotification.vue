@@ -1,14 +1,19 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { AlertTriangle, XCircle, Fan, Info, ChevronDown, ChevronUp } from 'lucide-vue-next';
+import { AlertTriangle, XCircle, Fan, Info, ChevronDown, ChevronUp, CheckCircle } from 'lucide-vue-next';
 
-defineProps<{
-  type: 'warning' | 'alert';
+const props = withDefaults(defineProps<{
+  type: 'warning' | 'alert' | 'success';
   title: string;
   message: string;
   details?: string;
   visible: boolean;
-}>();
+  showAction?: boolean;
+  showDetails?: boolean;
+}>(), {
+  showAction: true,
+  showDetails: true
+});
 
 const emit = defineEmits(['close', 'action']);
 
@@ -30,11 +35,19 @@ const toggleDetails = () => {
   >
     <div v-if="visible" 
          class="fixed bottom-4 right-4 w-96 glass-toast rounded-xl overflow-hidden z-50 shadow-2xl transition-all duration-300 border border-white/10"
-         :class="type === 'alert' ? 'shadow-[0_0_15px_rgba(239,68,68,0.3)]' : 'shadow-[0_0_15px_rgba(0,209,255,0.3)]'">
+         :class="{
+           'shadow-[0_0_15px_rgba(239,68,68,0.3)]': type === 'alert',
+           'shadow-[0_0_15px_rgba(74,222,128,0.3)]': type === 'success',
+           'shadow-[0_0_15px_rgba(0,209,255,0.3)]': type === 'warning'
+         }">
       
       <!-- Accent Line -->
       <div class="absolute left-0 top-0 bottom-0 w-1" 
-           :class="type === 'alert' ? 'bg-neon-alert' : 'bg-neon-gpu'"></div>
+           :class="{
+             'bg-neon-alert': type === 'alert',
+             'bg-green-400': type === 'success',
+             'bg-neon-gpu': type === 'warning'
+           }"></div>
 
       <div class="p-4 relative">
         <div class="flex items-start gap-3">
@@ -42,6 +55,7 @@ const toggleDetails = () => {
           <div class="flex-shrink-0 mt-0.5">
             <div class="p-2 rounded-full bg-white/5 border border-white/10">
               <AlertTriangle v-if="type === 'alert'" class="h-5 w-5 text-neon-alert" />
+              <CheckCircle v-else-if="type === 'success'" class="h-5 w-5 text-green-400" />
               <Info v-else class="h-5 w-5 text-neon-cpu" /> <!-- Using neon-cpu/gpu color -->
             </div>
           </div>
@@ -67,14 +81,14 @@ const toggleDetails = () => {
 
         <!-- Action Buttons -->
         <div class="flex items-center justify-end gap-2 mt-4 ml-11">
-             <button v-if="type === 'alert'"
+             <button v-if="type === 'alert' && showAction"
                       @click="emit('action')"
                       class="px-3 py-1.5 rounded-md text-xs font-semibold bg-neon-alert/10 text-neon-alert border border-neon-alert/20 hover:bg-neon-alert/20 transition-all flex items-center gap-1.5">
                 <Fan class="w-3.5 h-3.5" />
                 FIX ISSUE
               </button>
 
-              <button v-if="details"
+              <button v-if="details && showDetails"
                       @click="toggleDetails"
                       class="px-3 py-1.5 rounded-md text-xs font-medium text-gray-300 hover:text-white hover:bg-white/5 transition-all flex items-center gap-1">
                 DETAILS

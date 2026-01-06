@@ -2,8 +2,11 @@
 import { ref, computed, onMounted } from 'vue';
 import { Search, X, Box, ListTree, List, Info, ChevronRight, ChevronDown, ChevronsDown, ChevronsRight } from 'lucide-vue-next';
 import { isWindows } from "../utils/platform";
+import { invoke } from '@tauri-apps/api/core';
 import ProcessDetailsModal from '../components/ProcessDetailsModal.vue';
 import ConfirmationModal from '../components/ConfirmationModal.vue';
+import ContextMenu from '../components/ContextMenu.vue';
+import AffinityModal from '../components/AffinityModal.vue';
 
 interface ProcessInfo {
   pid: number;
@@ -96,6 +99,86 @@ const executeKill = () => {
         showConfirmation.value = false;
         processToKill.value = null;
     }
+};
+
+
+// Get hardware concurrency safely
+const cpuCount = ref(navigator.hardwareConcurrency || 4);
+
+
+// Context Menu State
+const contextMenu = ref({
+  show: false,
+  x: 0,
+  y: 0,
+  pid: 0
+});
+
+const showContextMenu = (event: MouseEvent, process: ProcessInfo) => {
+  event.preventDefault();
+  contextMenu.value = {
+    show: true,
+    x: event.clientX,
+    y: event.clientY,
+    pid: process.pid
+  };
+};
+
+const closeContextMenu = () => {
+  contextMenu.value.show = false;
+};
+
+import ToastNotification from '../components/ToastNotification.vue';
+
+const toast = ref({
+  show: false,
+  title: '',
+  message: '',
+  type: 'success' as 'success' | 'alert' | 'warning',
+  showAction: true
+});
+
+const showToast = (title: string, message: string, type: 'success' | 'alert' | 'warning' = 'success', showAction = true) => {
+  toast.value = { show: true, title, message, type, showAction };
+  setTimeout(() => {
+    toast.value.show = false;
+  }, 3000);
+};
+
+const setPriority = async (priority: string) => {
+  if (!contextMenu.value.pid) return;
+  try {
+    await invoke('set_process_priority', { pid: contextMenu.value.pid, priority });
+    closeContextMenu();
+    showToast('Priority Updated', `Priority set to ${priority}`, 'success');
+  } catch (e) {
+    console.error('Failed to set priority:', e);
+    showToast('Action Failed', `Failed to set priority: ${e}`, 'alert', false);
+  }
+};
+
+const killFromContext = () => {
+    const process = props.processes.find(p => p.pid === contextMenu.value.pid) 
+                 || processedData.value.find(p => p.pid === contextMenu.value.pid);
+    if (process) {
+        confirmKill(process as ProcessInfo);
+    }
+    closeContextMenu();
+};
+
+// Affinity Modal State
+const showAffinityModal = ref(false);
+const affinityPid = ref<number | null>(null);
+
+const openAffinityModal = () => {
+    affinityPid.value = contextMenu.value.pid;
+    showAffinityModal.value = true;
+    closeContextMenu();
+};
+
+const onAffinitySaved = () => {
+    showAffinityModal.value = false;
+    showToast('Affinity Updated', 'Processor affinity updated successfully', 'success');
 };
 
 onMounted(async () => {
@@ -298,7 +381,8 @@ const formatNetworkBytes = (bytes: number) => {
     <!-- Process List -->
     <div class="flex-grow overflow-y-auto custom-scrollbar px-2">
       <div v-for="process in processedData" :key="process.pid" 
-           class="grid grid-cols-12 gap-4 px-4 py-2 items-center hover:bg-white/5 rounded-lg transition-colors group border-b border-white/5 last:border-0">
+           @contextmenu.prevent="showContextMenu($event, process)"
+           class="grid grid-cols-12 gap-4 px-4 py-2 items-center hover:bg-white/5 rounded-lg transition-colors group border-b border-white/5 last:border-0 cursor-context-menu">
         
         <!-- Name (with Indentation for Tree) -->
         <div class="col-span-3 flex items-center gap-2 overflow-hidden">
@@ -454,6 +538,34 @@ const formatNetworkBytes = (bytes: number) => {
         confirm-text="Kill Process"
         @confirm="executeKill"
         @cancel="showConfirmation = false"
+    />
+
+    <ContextMenu
+      v-if="contextMenu.show"
+      :x="contextMenu.x"
+      :y="contextMenu.y"
+      :pid="contextMenu.pid"
+      @close="closeContextMenu"
+      @set-priority="setPriority"
+      @set-affinity="openAffinityModal"
+      @kill="killFromContext"
+    />
+
+    <AffinityModal
+      :is-open="showAffinityModal"
+      :pid="affinityPid"
+      :cpu-count="cpuCount" 
+      @close="showAffinityModal = false"
+      @save="onAffinitySaved"
+    />
+
+    <ToastNotification
+      :visible="toast.show"
+      :title="toast.title"
+      :message="toast.message"
+      :type="toast.type"
+      :show-action="toast.showAction"
+      @close="toast.show = false"
     />
 
   </div>
