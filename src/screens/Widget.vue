@@ -64,7 +64,7 @@ const formatBytes = (bytes: number) => {
       </div>
       <!-- Simulated Wave Chart -->
       <div class="h-8 w-full bg-gray-900/50 rounded flex items-end overflow-hidden relative">
-        <div class="absolute inset-0 opacity-20 bg-neon-ram/20"></div>
+        <!-- <div class="absolute inset-0 opacity-20 bg-neon-ram/20"></div> -->
         <div class="w-full h-full flex items-end gap-0.5 px-1 pb-1">
            <div v-for="i in 20" :key="i" 
                 class="flex-1 bg-neon-ram rounded-t-sm transition-all duration-500"
@@ -145,8 +145,8 @@ const formatBytes = (bytes: number) => {
       <div class="flex flex-col gap-1">
          <div v-for="comp in props.stats.components.slice(0, 3)" :key="comp.label" class="flex justify-between text-xs items-center">
              <span class="text-gray-400 truncate w-24" :title="comp.label">{{ comp.label }}</span>
-             <span class="font-mono font-bold" :class="comp.temperature > 80 ? 'text-orange-500' : 'text-neon-cpu'">
-                 {{ comp.temperature.toFixed(0) }}°C
+             <span class="font-mono font-bold" :class="(comp.temperature || 0) > 80 ? 'text-orange-500' : 'text-neon-cpu'">
+                 {{ (comp.temperature || 0).toFixed(0) }}°C
              </span>
          </div>
       </div>
