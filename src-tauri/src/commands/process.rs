@@ -194,10 +194,33 @@ pub fn set_process_priority(pid: u32, priority: String) -> Result<bool, String> 
                 Ok(true)
             } else {
                 let err = std::io::Error::last_os_error();
-                Err(format!(
-                    "Failed to set priority (may require root): {}",
-                    err
-                ))
+                // If permission denied, try pkexec
+                if err.kind() == std::io::ErrorKind::PermissionDenied {
+                    use std::process::Command;
+                    let status = Command::new("pkexec")
+                        .arg("renice")
+                        .arg("-n")
+                        .arg(nice_value.to_string())
+                        .arg("-p")
+                        .arg(pid.to_string())
+                        .status();
+
+                    match status {
+                        Ok(exit_status) => {
+                            if exit_status.success() {
+                                Ok(true)
+                            } else {
+                                Err(format!(
+                                    "Failed to set priority via pkexec: {}",
+                                    exit_status
+                                ))
+                            }
+                        }
+                        Err(e) => Err(format!("Failed to execute pkexec: {}", e)),
+                    }
+                } else {
+                    Err(format!("Failed to set priority: {}", err))
+                }
             }
         }
     }
@@ -249,12 +272,14 @@ pub fn get_process_affinity(pid: u32) -> Result<Vec<u32>, String> {
     {
         use nix::sched::sched_getaffinity;
         use nix::unistd::Pid;
-        use sysinfo::{System, RefreshKind, CpuRefreshKind};
+        use sysinfo::{CpuRefreshKind, RefreshKind, System};
 
         match sched_getaffinity(Pid::from_raw(pid as i32)) {
             Ok(cpuset) => {
                 let mut cpus = Vec::new();
-                let s = System::new_with_specifics(RefreshKind::new().with_cpu(CpuRefreshKind::everything()));
+                let s = System::new_with_specifics(
+                    RefreshKind::new().with_cpu(CpuRefreshKind::everything()),
+                );
                 for i in 0..s.cpus().len() {
                     if cpuset.is_set(i).unwrap_or(false) {
                         cpus.push(i as u32);
