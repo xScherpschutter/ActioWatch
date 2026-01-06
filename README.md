@@ -102,4 +102,6 @@ ActioWatch leverages modern web technologies for the frontend and the performanc
 | :---: | :---: |
 | ![Hardware Monitor](screenshots/screen9.png) | ![Three View](screenshots/screen1.png) |
 
----
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
