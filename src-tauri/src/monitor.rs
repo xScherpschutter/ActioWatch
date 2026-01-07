@@ -134,7 +134,7 @@ pub fn start_monitoring<R: Runtime>(app_handle: AppHandle<R>) {
                     }
 
                     // Update totals
-                    // Aggregation disabled per user request: Each process shows only its own stats.
+                    // Aggregation disabled: Each process shows only its own stats.
                     // #[cfg(target_os = "windows")]
                     // for child in &node.children {
                     //    node.total_cpu_usage += child.total_cpu_usage;
@@ -219,20 +219,22 @@ pub fn start_monitoring<R: Runtime>(app_handle: AppHandle<R>) {
             }
 
             // Debugging: Count total nodes in the tree to verify no data loss
-            // fn count_tree_nodes(nodes: &[ProcessInfo]) -> usize {
-            //     let mut count = 0;
-            //     for node in nodes {
-            //         count += 1;
-            //         count += count_tree_nodes(&node.children);
-            //     }
-            //     count
-            // }
-            // let tree_count = count_tree_nodes(&processes);
-            // let sys_count = sys.processes().len();
-            // println!(
-            //     "DEBUG: SysInfo Total: {}, Frontend Tree Total: {}",
-            //     sys_count, tree_count
-            // );
+            /*
+            fn count_tree_nodes(nodes: &[ProcessInfo]) -> usize {
+                let mut count = 0;
+                for node in nodes {
+                    count += 1;
+                    count += count_tree_nodes(&node.children);
+                }
+                count
+            }
+            let tree_count = count_tree_nodes(&processes);
+            let sys_count = sys.processes().len();
+            println!(
+                "DEBUG: SysInfo Total: {}, Frontend Tree Total: {}",
+                sys_count, tree_count
+            );
+            */
 
             let stats = SystemStats {
                 cpu_usage: global_cpu,
