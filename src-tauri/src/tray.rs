@@ -1,8 +1,50 @@
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
-    App, Emitter, LogicalSize, Manager, Runtime, Size,
+    webview::WebviewWindowBuilder,
+    App, Emitter, LogicalSize, Manager, Runtime, Size, WebviewUrl,
 };
+
+/// Helper function to create or get the main window
+fn get_or_create_window<R: Runtime>(
+    app: &tauri::AppHandle<R>,
+    width: f64,
+    height: f64,
+) -> Option<tauri::WebviewWindow<R>> {
+    // Try to get existing window first
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.set_size(Size::Logical(LogicalSize { width, height }));
+        let _ = window.show();
+        let _ = window.set_focus();
+        return Some(window);
+    }
+
+    // Window doesn't exist, create a new one
+    match WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
+        .title("ActioWatch")
+        .inner_size(width, height)
+        .decorations(false)
+        .transparent(true)
+        .build()
+    {
+        Ok(window) => {
+            let _ = window.show();
+            let _ = window.set_focus();
+            Some(window)
+        }
+        Err(e) => {
+            eprintln!("Failed to create window: {}", e);
+            None
+        }
+    }
+}
+
+/// Destroy the main window to free WebView memory
+fn destroy_window<R: Runtime>(app: &tauri::AppHandle<R>) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.destroy();
+    }
+}
 
 pub fn create_tray<R: Runtime>(app: &mut App<R>) -> Result<tauri::tray::TrayIcon<R>, tauri::Error> {
     let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
@@ -21,34 +63,23 @@ pub fn create_tray<R: Runtime>(app: &mut App<R>) -> Result<tauri::tray::TrayIcon
                 app.exit(0);
             }
             "show" => {
-                if let Some(window) = app.get_webview_window("main") {
-                    let _ = window.show();
-                    let _ = window.set_focus();
-                }
+                // Recreate window if it was destroyed, or show if it exists
+                get_or_create_window(app, 800.0, 600.0);
             }
             "hide" => {
-                if let Some(window) = app.get_webview_window("main") {
-                    let _ = window.hide();
-                }
+                // Destroy window to free WebView memory (backend keeps running)
+                destroy_window(app);
             }
             "widget" => {
-                if let Some(window) = app.get_webview_window("main") {
-                    let _ = window.set_size(Size::Logical(LogicalSize {
-                        width: 380.0,
-                        height: 540.0,
-                    }));
+                // Create/show window in widget mode
+                if let Some(window) = get_or_create_window(app, 380.0, 540.0) {
                     let _ = window.emit("view-change", "widget");
-                    let _ = window.show();
                 }
             }
             "standard" => {
-                if let Some(window) = app.get_webview_window("main") {
-                    let _ = window.set_size(Size::Logical(LogicalSize {
-                        width: 800.0,
-                        height: 600.0,
-                    }));
+                // Create/show window in standard mode
+                if let Some(window) = get_or_create_window(app, 800.0, 600.0) {
                     let _ = window.emit("view-change", "process");
-                    let _ = window.show();
                 }
             }
             _ => {}

@@ -44,21 +44,33 @@ pub fn run() {
             if let Some(window) = app.get_webview_window("main") {
                 let args: Vec<String> = std::env::args().collect();
                 if args.contains(&"--minimized".to_string()) {
-                    window.hide().unwrap();
+                    // If started minimized, destroy the window immediately
+                    // Backend will keep running with tray
+                    let _ = window.destroy();
+                } else {
+                    // Handle Close Requested Event: Destroy window to free WebView memory
+                    let app_handle = app.handle().clone();
+                    window.on_window_event(move |event| {
+                        if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                            api.prevent_close();
+                            // Destroy window asynchronously to free memory
+                            if let Some(win) = app_handle.get_webview_window("main") {
+                                let _ = win.destroy();
+                            }
+                        }
+                    });
                 }
-
-                // Handle Close Requested Event (Minimize instead of Close)
-                let window_clone = window.clone();
-                window.on_window_event(move |event| {
-                    if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                        window_clone.hide().unwrap();
-                        api.prevent_close();
-                    }
-                });
             }
 
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|_app_handle, event| {
+            // Prevent app from exiting when all windows are closed
+            // This keeps the backend running with the system tray
+            if let tauri::RunEvent::ExitRequested { api, .. } = event {
+                api.prevent_exit();
+            }
+        });
 }
