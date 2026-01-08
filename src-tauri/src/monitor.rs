@@ -168,9 +168,28 @@ pub fn start_monitoring<R: Runtime>(app_handle: AppHandle<R>) {
                         None => Some(pid_u32),
                         Some(ppid) => {
                             if !all_pids.contains(&ppid) {
-                                Some(pid_u32)
+                                return Some(pid_u32);
+                            }
+
+                            // Check link validity - mirror logic from children_map construction
+                            // If link is invalid, it MUST be a root
+                            if let Some(parent_proc) = sys.process(Pid::from(ppid as usize)) {
+                                let p_start = parent_proc.start_time();
+                                let c_start = process.start_time();
+
+                                if c_start < p_start {
+                                    // Invalid: Child older than parent -> Root
+                                    Some(pid_u32)
+                                } else if c_start == 0 && p_start == 0 {
+                                    // Invalid: Ambiguous 0 start times -> Root
+                                    Some(pid_u32)
+                                } else {
+                                    // Valid Child -> Not a root
+                                    None
+                                }
                             } else {
-                                None
+                                // Parent not found in sys (should be caught by all_pids check but safe fallback)
+                                Some(pid_u32)
                             }
                         }
                     }
@@ -198,6 +217,22 @@ pub fn start_monitoring<R: Runtime>(app_handle: AppHandle<R>) {
                 total_disk_read += p.total_disk_read;
                 total_disk_write += p.total_disk_write;
             }
+
+            // Debugging: Count total nodes in the tree to verify no data loss
+            // fn count_tree_nodes(nodes: &[ProcessInfo]) -> usize {
+            //     let mut count = 0;
+            //     for node in nodes {
+            //         count += 1;
+            //         count += count_tree_nodes(&node.children);
+            //     }
+            //     count
+            // }
+            // let tree_count = count_tree_nodes(&processes);
+            // let sys_count = sys.processes().len();
+            // println!(
+            //     "DEBUG: SysInfo Total: {}, Frontend Tree Total: {}",
+            //     sys_count, tree_count
+            // );
 
             let stats = SystemStats {
                 cpu_usage: global_cpu,
