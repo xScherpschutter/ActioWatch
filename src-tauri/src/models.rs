@@ -75,3 +75,9 @@ pub struct ModuleInfo {
     pub name: String,
     pub path: String,
 }
+
+// Global Lifecycle State
+use std::sync::atomic::AtomicBool;
+pub struct AppLifecycle {
+    pub is_quitting: AtomicBool,
+}

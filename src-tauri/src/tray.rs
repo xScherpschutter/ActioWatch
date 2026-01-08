@@ -1,3 +1,5 @@
+use crate::models::AppLifecycle;
+use std::sync::atomic::Ordering;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
@@ -60,6 +62,8 @@ pub fn create_tray<R: Runtime>(app: &mut App<R>) -> Result<tauri::tray::TrayIcon
         .show_menu_on_left_click(true)
         .on_menu_event(|app, event| match event.id.as_ref() {
             "quit" => {
+                let app_state = app.state::<AppLifecycle>();
+                app_state.is_quitting.store(true, Ordering::Relaxed);
                 app.exit(0);
             }
             "show" => {

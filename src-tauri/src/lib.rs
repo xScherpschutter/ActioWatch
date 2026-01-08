@@ -9,6 +9,8 @@ use commands::process::{
     set_process_affinity, set_process_priority,
 };
 use commands::startup::{get_startup_apps, toggle_startup_app};
+use models::AppLifecycle;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -32,6 +34,9 @@ pub fn run() {
             get_process_affinity,
             set_process_affinity
         ])
+        .manage(AppLifecycle {
+            is_quitting: AtomicBool::new(false),
+        })
         .setup(|app| {
             // Create tray icon
             let _tray = tray::create_tray(app)?;
@@ -52,10 +57,13 @@ pub fn run() {
                     let app_handle = app.handle().clone();
                     window.on_window_event(move |event| {
                         if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                            api.prevent_close();
-                            // Destroy window asynchronously to free memory
-                            if let Some(win) = app_handle.get_webview_window("main") {
-                                let _ = win.destroy();
+                            // If not quitting, prevent close and destroy window manually to keep backend alive
+                            let app_state = app_handle.state::<AppLifecycle>();
+                            if !app_state.is_quitting.load(Ordering::Relaxed) {
+                                api.prevent_close();
+                                if let Some(win) = app_handle.get_webview_window("main") {
+                                    let _ = win.destroy();
+                                }
                             }
                         }
                     });
@@ -66,11 +74,13 @@ pub fn run() {
         })
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
-        .run(|_app_handle, event| {
-            // Prevent app from exiting when all windows are closed
-            // This keeps the backend running with the system tray
+        .run(|app_handle, event| {
+            // Prevent app from exiting when all windows are closed, unless explicitly quitting
             if let tauri::RunEvent::ExitRequested { api, .. } = event {
-                api.prevent_exit();
+                let app_state = app_handle.state::<AppLifecycle>();
+                if !app_state.is_quitting.load(Ordering::Relaxed) {
+                    api.prevent_exit();
+                }
             }
         });
 }
