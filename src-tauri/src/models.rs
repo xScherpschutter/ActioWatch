@@ -34,6 +34,7 @@ pub struct ComponentInfo {
 #[derive(Serialize, Clone)]
 pub struct SystemStats {
     pub cpu_usage: f32,
+    pub process_count: usize,
     pub memory_used: u64,
     pub memory_total: u64,
     pub network_up: u64,

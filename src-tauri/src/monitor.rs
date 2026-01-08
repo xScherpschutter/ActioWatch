@@ -58,11 +58,40 @@ pub fn start_monitoring<R: Runtime>(app_handle: AppHandle<R>) {
             for (pid, process) in sys.processes() {
                 let pid_u32 = pid.as_u32();
                 all_pids.insert(pid_u32);
+
                 if let Some(parent) = process.parent() {
-                    children_map
-                        .entry(parent.as_u32())
-                        .or_default()
-                        .push(pid_u32);
+                    // General validation: Child cannot be older than parent.
+                    // We check start_time() which is Unix timestamp in seconds.
+
+                    let is_valid = if let Some(parent_proc) = sys.process(parent) {
+                        let p_start = parent_proc.start_time();
+                        let c_start = process.start_time();
+
+                        if c_start < p_start {
+                            // Child started BEFORE Parent -> Impossible -> Parent PID Reused.
+                            false
+                        } else if c_start == 0 && p_start == 0 {
+                            // Both have 0 start time (likely Access Denied / System Processes).
+                            // We cannot distinguish valid parentage from PID reuse.
+                            // Defaulting to FALSE (Treat as Root) prevents the "Giant Tree" memory execution bug.
+                            // Side Effect: System process tree might be flatter (services separate from wininit), but memory is correct.
+                            false
+                        } else {
+                            // Child started After (or same second as) Parent -> Valid.
+                            true
+                        }
+                    } else {
+                        // Parent process not in list?
+                        // If we can't find parent, we can't aggregate anyway.
+                        true
+                    };
+
+                    if is_valid {
+                        children_map
+                            .entry(parent.as_u32())
+                            .or_default()
+                            .push(pid_u32);
+                    }
                 }
             }
 
@@ -105,15 +134,14 @@ pub fn start_monitoring<R: Runtime>(app_handle: AppHandle<R>) {
                     }
 
                     // Update totals
-                    // On Windows (and others), aggregate children stats into parent.
-                    // On Linux, we skip this to avoid double counting systemd/init.
-                    #[cfg(target_os = "windows")]
-                    for child in &node.children {
-                        node.total_cpu_usage += child.total_cpu_usage;
-                        node.total_memory_usage += child.total_memory_usage;
-                        node.total_disk_read += child.total_disk_read;
-                        node.total_disk_write += child.total_disk_write;
-                    }
+                    // Aggregation disabled per user request: Each process shows only its own stats.
+                    // #[cfg(target_os = "windows")]
+                    // for child in &node.children {
+                    //    node.total_cpu_usage += child.total_cpu_usage;
+                    //    node.total_memory_usage += child.total_memory_usage;
+                    //    node.total_disk_read += child.total_disk_read;
+                    //    node.total_disk_write += child.total_disk_write;
+                    // }
 
                     // Sort children by Total CPU usage
                     node.children.sort_by(|a, b| {
@@ -173,6 +201,7 @@ pub fn start_monitoring<R: Runtime>(app_handle: AppHandle<R>) {
 
             let stats = SystemStats {
                 cpu_usage: global_cpu,
+                process_count: sys.processes().len(),
                 memory_used,
                 memory_total,
                 network_up,

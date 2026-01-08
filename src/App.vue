@@ -23,6 +23,7 @@ const stats = ref<{
   network_down: number;
   components?: any[];
   top_processes: any[];
+  process_count?: number;
 }>({
   cpu_usage: 0,
   memory_used: 0,
@@ -30,7 +31,8 @@ const stats = ref<{
   network_up: 0,
   network_down: 0,
   components: [],
-  top_processes: []
+  top_processes: [],
+  process_count: 0
 });
 
 // Platform detection
@@ -117,6 +119,7 @@ const killProcess = async (pid: number) => {
           :networkUp="stats.network_up"
           :networkDown="stats.network_down"
           :components="stats.components"
+          :processCount="stats.process_count"
           @kill-process="killProcess"
         />
       </Transition>

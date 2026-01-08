@@ -37,9 +37,11 @@ const props = withDefaults(defineProps<{
   memoryTotal: number;
   networkUp?: number;
   networkDown?: number;
+  processCount?: number;
 }>(), {
   networkUp: 0,
   networkDown: 0,
+  processCount: 0,
 });
 
 const emit = defineEmits(['kill-process']);
@@ -501,7 +503,7 @@ const formatNetworkBytes = (bytes: number) => {
       <div class="flex gap-8">
         <div class="flex flex-col">
           <span class="text-[10px] text-white/60 uppercase font-bold">Total Processes</span>
-          <span class="text-lg font-mono text-white">{{ totalProcesses }}</span>
+          <span class="text-lg font-mono text-white">{{ processCount || totalProcesses }}</span>
         </div>
         
         <div v-if="isLinuxPlatform" class="flex flex-col">
