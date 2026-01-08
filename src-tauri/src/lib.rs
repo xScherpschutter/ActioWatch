@@ -9,8 +9,10 @@ use commands::process::{
     set_process_affinity, set_process_priority,
 };
 use commands::startup::{get_startup_apps, toggle_startup_app};
+use commands::view::get_current_view;
 use models::AppLifecycle;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Mutex;
 use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -32,10 +34,12 @@ pub fn run() {
             toggle_startup_app,
             set_process_priority,
             get_process_affinity,
-            set_process_affinity
+            set_process_affinity,
+            get_current_view
         ])
         .manage(AppLifecycle {
             is_quitting: AtomicBool::new(false),
+            current_view: Mutex::new("process".to_string()),
         })
         .setup(|app| {
             // Create tray icon

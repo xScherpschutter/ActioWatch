@@ -68,7 +68,13 @@ pub fn create_tray<R: Runtime>(app: &mut App<R>) -> Result<tauri::tray::TrayIcon
             }
             "show" => {
                 // Recreate window if it was destroyed, or show if it exists
-                get_or_create_window(app, 800.0, 600.0);
+                let app_state = app.state::<AppLifecycle>();
+                *app_state.current_view.lock().unwrap() = "process".to_string();
+
+                if let Some(window) = get_or_create_window(app, 800.0, 600.0) {
+                    // Also emit for existing windows
+                    let _ = window.emit("view-change", "process");
+                }
             }
             "hide" => {
                 // Destroy window to free WebView memory (backend keeps running)
@@ -76,12 +82,18 @@ pub fn create_tray<R: Runtime>(app: &mut App<R>) -> Result<tauri::tray::TrayIcon
             }
             "widget" => {
                 // Create/show window in widget mode
+                let app_state = app.state::<AppLifecycle>();
+                *app_state.current_view.lock().unwrap() = "widget".to_string();
+
                 if let Some(window) = get_or_create_window(app, 380.0, 540.0) {
                     let _ = window.emit("view-change", "widget");
                 }
             }
             "standard" => {
                 // Create/show window in standard mode
+                let app_state = app.state::<AppLifecycle>();
+                *app_state.current_view.lock().unwrap() = "process".to_string();
+
                 if let Some(window) = get_or_create_window(app, 800.0, 600.0) {
                     let _ = window.emit("view-change", "process");
                 }

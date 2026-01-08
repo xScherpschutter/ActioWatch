@@ -52,7 +52,15 @@ let unlistenStats: () => void;
 let unlistenViewChange: () => void;
 
 onMounted(async () => {
-
+  // Get initial view state from backend
+  try {
+    const view = await invoke('get_current_view');
+    if (view) {
+        currentView.value = view as 'widget' | 'process' | 'settings' | 'ports' | 'hardware' | 'startup';
+    }
+  } catch (e) {
+    console.error("Failed to get initial view:", e);
+  }
 
   // Listen for stats updates
   unlistenStats = await listen('stats-update', (event: any) => {

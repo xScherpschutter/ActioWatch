@@ -78,6 +78,9 @@ pub struct ModuleInfo {
 
 // Global Lifecycle State
 use std::sync::atomic::AtomicBool;
+use std::sync::Mutex;
+
 pub struct AppLifecycle {
     pub is_quitting: AtomicBool,
+    pub current_view: Mutex<String>,
 }
