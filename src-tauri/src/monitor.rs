@@ -16,6 +16,9 @@ pub fn start_monitoring<R: Runtime>(app_handle: AppHandle<R>) {
         let mut last_high_cpu_notification = std::time::Instant::now() - Duration::from_secs(60);
         let mut last_high_memory_notification = std::time::Instant::now() - Duration::from_secs(60);
 
+        // Network refresh ticker
+        let mut refresh_tick = 0;
+
         let icon_path_str = app_handle
             .path()
             .resolve("icons/icon.png", BaseDirectory::Resource)
@@ -23,7 +26,9 @@ pub fn start_monitoring<R: Runtime>(app_handle: AppHandle<R>) {
             .map(|p| p.to_string_lossy().to_string());
 
         loop {
-            // Refresh CPU, Memory, Processes and Networks
+            refresh_tick += 1;
+
+            // Refresh CPU, Memory, Processes
             sys.refresh_cpu();
             sys.refresh_memory();
             // Refresh processes including Disk Usage
@@ -34,7 +39,12 @@ pub fn start_monitoring<R: Runtime>(app_handle: AppHandle<R>) {
                     .with_disk_usage(),
             );
 
+            // Re-scan network interfaces periodically to catch new connections (e.g., VPN, WiFi switch)
+            if refresh_tick % 10 == 0 {
+                networks.refresh_list();
+            }
             networks.refresh();
+
             components.refresh();
 
             // Calculate global CPU usage
@@ -43,8 +53,11 @@ pub fn start_monitoring<R: Runtime>(app_handle: AppHandle<R>) {
             let memory_total = sys.total_memory();
 
             // Calculate global Network usage
+            // sysinfo::Networks::refresh() updates the data to show bytes transmitted/received
+            // SINCE THE LAST REFRESH. Since we loop every 1s, this value IS the rate (Bytes/s).
             let mut network_up = 0;
             let mut network_down = 0;
+
             for (_name, data) in &networks {
                 network_up += data.transmitted();
                 network_down += data.received();
