@@ -11,12 +11,23 @@ const loading = ref(true);
 // Check current status
 onMounted(async () => {
   try {
-    const [autostart, notifications] = await Promise.all([
+    const [autostart, notificationsBackend] = await Promise.all([
       isEnabled(),
       invoke('get_notifications_enabled')
     ]);
     autostartEnabled.value = autostart;
-    notificationsEnabled.value = notifications as boolean;
+
+    // LocalStorage Strategy for Persistence
+    const stored = localStorage.getItem('notifications_enabled');
+    if (stored !== null) {
+      const shouldEnable = stored === 'true';
+      notificationsEnabled.value = shouldEnable;
+      // Sync to backend immediately
+      await invoke('set_notifications_enabled', { enabled: shouldEnable });
+    } else {
+      // First run or no preference: use backend default (true)
+      notificationsEnabled.value = notificationsBackend as boolean;
+    }
   } catch (error) {
     console.error('Error checking settings status:', error);
   } finally {
@@ -48,6 +59,8 @@ const toggleNotifications = async () => {
   try {
       await invoke('set_notifications_enabled', { enabled: newState });
       notificationsEnabled.value = newState;
+      // Persist to LocalStorage
+      localStorage.setItem('notifications_enabled', String(newState));
   } catch(error) {
       console.error('Error toggling notifications:', error);
   }

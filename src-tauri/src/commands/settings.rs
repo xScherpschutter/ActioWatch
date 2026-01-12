@@ -1,6 +1,6 @@
 use crate::models::AppLifecycle;
 use std::sync::atomic::Ordering;
-use tauri::{State};
+use tauri::State;
 
 #[tauri::command]
 pub fn get_notifications_enabled(state: State<AppLifecycle>) -> bool {
