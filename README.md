@@ -98,9 +98,9 @@ ActioWatch leverages modern web technologies for the frontend and the performanc
 | :---: | :---: |
 | ![Process Details](screenshots/screen7.png) | ![Widget Mode](screenshots/screen8.png) |
 
-| Hardware Monitor | Three View |
+| Hardware Monitor | List View |
 | :---: | :---: |
-| ![Hardware Monitor](screenshots/screen9.png) | ![Three View](screenshots/screen1.png) |
+| ![Hardware Monitor](screenshots/screen9.png) | ![List View](screenshots/screen1.png) |
 
 ## License
 
