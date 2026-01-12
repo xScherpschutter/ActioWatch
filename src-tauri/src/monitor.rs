@@ -283,17 +283,24 @@ pub fn start_monitoring<R: Runtime>(app_handle: AppHandle<R>) {
 
             if high_cpu_count >= 5 {
                 if last_high_cpu_notification.elapsed() > Duration::from_secs(60) {
-                    let mut notification = app_handle
-                        .notification()
-                        .builder()
-                        .title("High CPU Alert")
-                        .body("System CPU usage is critically high (> 90%)");
+                    if let Some(app_state) = app_handle.try_state::<crate::models::AppLifecycle>() {
+                        if app_state
+                            .notifications_enabled
+                            .load(std::sync::atomic::Ordering::Relaxed)
+                        {
+                            let mut notification = app_handle
+                                .notification()
+                                .builder()
+                                .title("High CPU Alert")
+                                .body("System CPU usage is critically high (> 90%)");
 
-                    if let Some(icon) = &icon_path_str {
-                        notification = notification.icon(icon);
+                            if let Some(icon) = &icon_path_str {
+                                notification = notification.icon(icon);
+                            }
+
+                            let _ = notification.show();
+                        }
                     }
-
-                    let _ = notification.show();
 
                     last_high_cpu_notification = std::time::Instant::now();
                 }
@@ -308,21 +315,30 @@ pub fn start_monitoring<R: Runtime>(app_handle: AppHandle<R>) {
                 let memory_bytes = process.memory();
                 if memory_bytes > memory_threshold {
                     if !notified_pids.contains(pid) {
-                        let mut notification = app_handle
-                            .notification()
-                            .builder()
-                            .title("High Memory Usage")
-                            .body(&format!(
-                                "Process {} is using {:.2} GB RAM",
-                                process.name(),
-                                memory_bytes as f64 / 1_073_741_824.0
-                            ));
+                        if let Some(app_state) =
+                            app_handle.try_state::<crate::models::AppLifecycle>()
+                        {
+                            if app_state
+                                .notifications_enabled
+                                .load(std::sync::atomic::Ordering::Relaxed)
+                            {
+                                let mut notification = app_handle
+                                    .notification()
+                                    .builder()
+                                    .title("High Memory Usage")
+                                    .body(&format!(
+                                        "Process {} is using {:.2} GB RAM",
+                                        process.name(),
+                                        memory_bytes as f64 / 1_073_741_824.0
+                                    ));
 
-                        if let Some(icon) = &icon_path_str {
-                            notification = notification.icon(icon);
+                                if let Some(icon) = &icon_path_str {
+                                    notification = notification.icon(icon);
+                                }
+
+                                let _ = notification.show();
+                            }
                         }
-
-                        let _ = notification.show();
 
                         notified_pids.insert(*pid);
                     }
@@ -338,20 +354,27 @@ pub fn start_monitoring<R: Runtime>(app_handle: AppHandle<R>) {
 
             if high_memory_count >= 3 {
                 if last_high_memory_notification.elapsed() > Duration::from_secs(60) {
-                    let mut notification = app_handle
-                        .notification()
-                        .builder()
-                        .title("Memory Alert")
-                        .body(&format!(
-                            "System memory usage is critically high ({:.1}%)",
-                            memory_used as f64 / memory_total as f64 * 100.0
-                        ));
+                    if let Some(app_state) = app_handle.try_state::<crate::models::AppLifecycle>() {
+                        if app_state
+                            .notifications_enabled
+                            .load(std::sync::atomic::Ordering::Relaxed)
+                        {
+                            let mut notification = app_handle
+                                .notification()
+                                .builder()
+                                .title("Memory Alert")
+                                .body(&format!(
+                                    "System memory usage is critically high ({:.1}%)",
+                                    memory_used as f64 / memory_total as f64 * 100.0
+                                ));
 
-                    if let Some(icon) = &icon_path_str {
-                        notification = notification.icon(icon);
+                            if let Some(icon) = &icon_path_str {
+                                notification = notification.icon(icon);
+                            }
+
+                            let _ = notification.show();
+                        }
                     }
-
-                    let _ = notification.show();
                     last_high_memory_notification = std::time::Instant::now();
                 }
 

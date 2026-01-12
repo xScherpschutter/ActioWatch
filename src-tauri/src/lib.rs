@@ -8,6 +8,7 @@ use commands::process::{
     get_process_affinity, get_process_details, get_process_modules, kill_process,
     set_process_affinity, set_process_priority,
 };
+use commands::settings::{get_notifications_enabled, set_notifications_enabled};
 use commands::startup::{get_startup_apps, toggle_startup_app};
 use commands::view::get_current_view;
 use models::AppLifecycle;
@@ -35,10 +36,13 @@ pub fn run() {
             set_process_priority,
             get_process_affinity,
             set_process_affinity,
-            get_current_view
+            get_current_view,
+            get_notifications_enabled,
+            set_notifications_enabled
         ])
         .manage(AppLifecycle {
             is_quitting: AtomicBool::new(false),
+            notifications_enabled: AtomicBool::new(true),
             current_view: Mutex::new("process".to_string()),
         })
         .setup(|app| {

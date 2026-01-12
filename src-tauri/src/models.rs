@@ -82,5 +82,6 @@ use std::sync::Mutex;
 
 pub struct AppLifecycle {
     pub is_quitting: AtomicBool,
+    pub notifications_enabled: AtomicBool,
     pub current_view: Mutex<String>,
 }

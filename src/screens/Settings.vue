@@ -1,17 +1,24 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { enable, disable, isEnabled } from '@tauri-apps/plugin-autostart';
+import { invoke } from '@tauri-apps/api/core';
 import { Settings } from 'lucide-vue-next';
 
 const autostartEnabled = ref(false);
+const notificationsEnabled = ref(true);
 const loading = ref(true);
 
-// Check current autostart status
+// Check current status
 onMounted(async () => {
   try {
-    autostartEnabled.value = await isEnabled();
+    const [autostart, notifications] = await Promise.all([
+      isEnabled(),
+      invoke('get_notifications_enabled')
+    ]);
+    autostartEnabled.value = autostart;
+    notificationsEnabled.value = notifications as boolean;
   } catch (error) {
-    console.error('Error checking autostart status:', error);
+    console.error('Error checking settings status:', error);
   } finally {
     loading.value = false;
   }
@@ -34,6 +41,17 @@ const toggleAutostart = async () => {
     loading.value = false;
   }
 };
+
+// Toggle notifications
+const toggleNotifications = async () => {
+  const newState = !notificationsEnabled.value;
+  try {
+      await invoke('set_notifications_enabled', { enabled: newState });
+      notificationsEnabled.value = newState;
+  } catch(error) {
+      console.error('Error toggling notifications:', error);
+  }
+}
 </script>
 
 <template>
@@ -45,6 +63,7 @@ const toggleAutostart = async () => {
     </div>
 
     <div class="settings-content">
+      <!-- Autostart Setting -->
       <div class="setting-item">
         <div class="setting-info">
           <h3>Start on System Boot</h3>
@@ -61,6 +80,25 @@ const toggleAutostart = async () => {
           </button>
         </div>
       </div>
+
+       <!-- Notification Setting -->
+      <div class="setting-item">
+        <div class="setting-info">
+          <h3>System Notifications</h3>
+          <p>Show desktop alerts for high CPU and Memory usage</p>
+        </div>
+        <div class="setting-control">
+          <button 
+            class="toggle-button"
+            :class="{ active: notificationsEnabled }"
+            :disabled="loading"
+            @click="toggleNotifications"
+          >
+            <div class="toggle-slider" :class="{ active: notificationsEnabled }"></div>
+          </button>
+        </div>
+      </div>
+
     </div>
     </div>
   </div>
